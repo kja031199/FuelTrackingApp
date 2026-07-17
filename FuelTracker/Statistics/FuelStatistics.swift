@@ -26,6 +26,13 @@ struct PricePoint: Identifiable {
     let pricePerGallon: Double
 }
 
+/// An odometer reading recorded at a fill-up.
+struct OdometerPoint: Identifiable {
+    let id: UUID
+    let date: Date
+    let odometer: Double
+}
+
 /// All dashboard statistics, computed once from a set of fuel entries.
 ///
 /// MPG is calculated the way Fuelly does it: distance driven between two
@@ -37,6 +44,7 @@ struct FuelStatistics {
 
     let mpgPoints: [MPGPoint]
     let pricePoints: [PricePoint]
+    let odometerPoints: [OdometerPoint]
     let monthlyTotals: [MonthlyTotal]
 
     /// MPG for a specific entry, if it completed a full-tank segment.
@@ -83,6 +91,10 @@ struct FuelStatistics {
         self.pricePoints = sorted.map {
             PricePoint(id: $0.id, date: $0.date, pricePerGallon: $0.pricePerGallon)
         }
+
+        self.odometerPoints = sorted
+            .sorted { $0.date < $1.date }
+            .map { OdometerPoint(id: $0.id, date: $0.date, odometer: $0.odometer) }
 
         // Aggregate by calendar month for the spending / distance charts.
         let calendar = Calendar.current

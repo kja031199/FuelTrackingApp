@@ -115,6 +115,12 @@ struct DashboardView: View {
                     }
                 }
 
+                if statistics.odometerPoints.count >= 2 {
+                    ChartCard(title: "Odometer", subtitle: "Mileage recorded at each fill-up") {
+                        OdometerChart(points: statistics.odometerPoints)
+                    }
+                }
+
                 if statistics.monthlyTotals.count >= 2 {
                     ChartCard(title: "Monthly Spending", subtitle: "Total fuel cost by month") {
                         MonthlySpendChart(totals: statistics.monthlyTotals)

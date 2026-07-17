@@ -28,6 +28,7 @@ Charts (tap or drag the line charts to inspect a point):
 
 - **Fuel Economy** — MPG per full-tank fill-up, with your average as a reference line
 - **Gas Price** — price per gallon you paid over time
+- **Odometer** — mileage recorded at each fill-up over time
 - **Monthly Spending** — total fuel cost by calendar month
 - **Monthly Distance** — miles driven by calendar month
 

@@ -125,6 +125,65 @@ struct PriceChart: View {
     }
 }
 
+/// Odometer reading at each fill-up over time.
+struct OdometerChart: View {
+    let points: [OdometerPoint]
+
+    @State private var selectedDate: Date?
+
+    private var selectedPoint: OdometerPoint? {
+        guard let selectedDate else { return nil }
+        return points.min {
+            abs($0.date.timeIntervalSince(selectedDate)) < abs($1.date.timeIntervalSince(selectedDate))
+        }
+    }
+
+    var body: some View {
+        Chart {
+            ForEach(points) { point in
+                LineMark(
+                    x: .value("Date", point.date),
+                    y: .value("Odometer", point.odometer)
+                )
+                .foregroundStyle(.teal)
+                .lineStyle(StrokeStyle(lineWidth: 2))
+                .interpolationMethod(.monotone)
+
+                PointMark(
+                    x: .value("Date", point.date),
+                    y: .value("Odometer", point.odometer)
+                )
+                .foregroundStyle(.teal)
+                .symbolSize(selectedPoint?.id == point.id ? 100 : 36)
+            }
+
+            if let selectedPoint {
+                RuleMark(x: .value("Selected", selectedPoint.date))
+                    .foregroundStyle(.secondary.opacity(0.4))
+                    .lineStyle(StrokeStyle(lineWidth: 1))
+                    .annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                        selectionCallout(
+                            title: selectedPoint.date.formatted(.dateTime.month(.abbreviated).day()),
+                            value: "\(Format.odometer(selectedPoint.odometer)) mi"
+                        )
+                    }
+            }
+        }
+        .chartYScale(domain: .automatic(includesZero: false))
+        .chartYAxis {
+            AxisMarks { value in
+                AxisGridLine()
+                AxisValueLabel {
+                    if let miles = value.as(Double.self) {
+                        Text(miles.formatted(.number.notation(.compactName).precision(.fractionLength(0...1))))
+                    }
+                }
+            }
+        }
+        .chartXSelection(value: $selectedDate)
+    }
+}
+
 /// Total fuel spending aggregated by calendar month.
 struct MonthlySpendChart: View {
     let totals: [MonthlyTotal]
