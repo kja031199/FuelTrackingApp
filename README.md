@@ -35,6 +35,11 @@ Charts (tap or drag the line charts to inspect a point):
 ### Vehicles
 Track multiple vehicles, each with its own history and dashboard. Switch vehicles from the toolbar on the Dashboard and Fill-Ups tabs.
 
+### Apple Watch app
+A companion watchOS app for logging fill-ups from your wrist. The main screen is a quick-entry form (odometer, gallons, price per gallon, live auto-calculated total, full-tank toggle); scroll down for compact KPIs (avg/last MPG, total spent, cost per mile, avg price per gallon, miles tracked) and mini charts (MPG trend, gas price, monthly spend). Data syncs with the iPhone app through iCloud, and the watch app can also run standalone.
+
+To run it in Xcode: select the **FuelTrackerWatch** scheme, pick an Apple Watch simulator, and hit Run. (Xcode needs the watchOS platform downloaded — Settings → Components.)
+
 ### iCloud sync
 Your vehicles and fill-up history sync automatically across all your devices through your private iCloud database (SwiftData + CloudKit). Nobody else can see your data — it lives in your personal iCloud account. If iCloud isn't available (not signed in, or the capability isn't set up yet), the app falls back to local-only storage and keeps working.
 
@@ -46,7 +51,7 @@ Your vehicles and fill-up history sync automatically across all your devices thr
 ## Getting started
 
 1. Open `FuelTracker.xcodeproj` in Xcode.
-2. In the target's *Signing & Capabilities* tab, select your development team and change the bundle identifier from `com.example.FuelTracker` to something unique (e.g. `com.yourname.FuelTracker`).
+2. In the target's *Signing & Capabilities* tab, select your development team and change the bundle identifier from `com.example.FuelTracker` to something unique (e.g. `com.yourname.FuelTracker`). If you rename it, also update the watch target: its bundle identifier must be `<your bundle id>.watchkitapp` and its *WKCompanionAppBundleIdentifier* build setting must equal the iPhone app's bundle identifier.
 3. Build and run on an iPhone or the iOS Simulator.
 4. Add a vehicle in the **Vehicles** tab, then log fill-ups with the **+** button.
 
@@ -55,7 +60,7 @@ Your vehicles and fill-up history sync automatically across all your devices thr
 Sync requires a **paid Apple Developer Program membership** (free personal teams can't use the iCloud capability). One-time setup:
 
 1. In *Signing & Capabilities*, the **iCloud** (CloudKit) and **Push Notifications** capabilities are already declared in `FuelTracker/FuelTracker.entitlements`.
-2. Update the iCloud container identifier to match your bundle identifier: replace `iCloud.com.example.FuelTracker` in the entitlements file (or via the capability editor's container list) with `iCloud.<your bundle id>`.
+2. Update the iCloud container identifier to match your bundle identifier: replace `iCloud.com.example.FuelTracker` in **both** entitlements files (`FuelTracker/FuelTracker.entitlements` and `FuelTrackerWatch/FuelTrackerWatch.entitlements`) with `iCloud.<your bundle id>` — the iPhone and watch apps must share the same container for sync to work.
 3. Let Xcode register the App ID and container with your team (automatic signing does this on first build).
 4. Run on devices signed into the same iCloud account — changes sync automatically, including in the background via silent push.
 
@@ -64,15 +69,19 @@ Without those steps the app still runs; data just stays on-device.
 ## Project structure
 
 ```
-FuelTracker/
-├── FuelTrackerApp.swift          # App entry point + SwiftData container
-├── ContentView.swift             # Tab bar + vehicle picker
+Shared/                           # Compiled into both apps
 ├── Models/                       # SwiftData models (Vehicle, FuelEntry, FuelGrade)
 ├── Statistics/
 │   └── FuelStatistics.swift      # All KPI & chart math (MPG segments, monthly rollups)
-├── Views/
-│   ├── Dashboard/                # KPI grid + Swift Charts
-│   ├── FillUps/                  # History list + add/edit form
-│   └── Vehicles/                 # Vehicle management
 └── Support/                      # Formatters, preview sample data
+FuelTracker/                      # iPhone app
+├── FuelTrackerApp.swift          # App entry point + SwiftData container
+├── ContentView.swift             # Tab bar + vehicle picker
+└── Views/
+    ├── Dashboard/                # KPI grid + Swift Charts
+    ├── FillUps/                  # History list + add/edit form
+    └── Vehicles/                 # Vehicle management
+FuelTrackerWatch/                 # Apple Watch app
+├── FuelTrackerWatchApp.swift     # Entry point + shared iCloud container
+└── Views/                        # Quick-entry form, compact KPIs & charts
 ```
