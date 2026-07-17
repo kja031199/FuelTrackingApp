@@ -30,7 +30,7 @@ struct DashboardView: View {
     @State private var showingAddSheet = false
 
     private var filteredEntries: [FuelEntry] {
-        let all = selectedVehicle?.entries ?? []
+        let all = selectedVehicle?.fillUps ?? []
         guard let cutoff = timeRange.cutoff else { return all }
         return all.filter { $0.date >= cutoff }
     }

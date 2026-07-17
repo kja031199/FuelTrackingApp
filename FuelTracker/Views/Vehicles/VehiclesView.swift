@@ -70,7 +70,7 @@ struct VehiclesView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                Text("\(vehicle.entries.count) fill-up\(vehicle.entries.count == 1 ? "" : "s")")
+                Text("\(vehicle.fillUps.count) fill-up\(vehicle.fillUps.count == 1 ? "" : "s")")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

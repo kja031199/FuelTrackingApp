@@ -39,7 +39,7 @@ struct AddEditFillUpView: View {
     /// Highest odometer already logged for the selected vehicle (new entries only).
     private var previousOdometer: Double? {
         guard entry == nil, let vehicle = selectedVehicle else { return nil }
-        return vehicle.entries.map(\.odometer).max()
+        return vehicle.fillUps.map(\.odometer).max()
     }
 
     private var odometerLooksWrong: Bool {

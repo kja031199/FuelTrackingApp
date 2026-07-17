@@ -8,10 +8,29 @@ struct FuelTrackerApp: App {
             Vehicle.self,
             FuelEntry.self,
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+
+        // Sync through the private CloudKit database of the container declared
+        // in FuelTracker.entitlements. If iCloud isn't available (no signing
+        // team, missing capability), fall back to a local-only store so the
+        // app still works — data just stays on this device.
+        do {
+            let cloudConfiguration = ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: false,
+                cloudKitDatabase: .automatic
+            )
+            return try ModelContainer(for: schema, configurations: [cloudConfiguration])
+        } catch {
+            print("iCloud sync unavailable, using local store: \(error)")
+        }
 
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            let localConfiguration = ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: false,
+                cloudKitDatabase: .none
+            )
+            return try ModelContainer(for: schema, configurations: [localConfiguration])
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }

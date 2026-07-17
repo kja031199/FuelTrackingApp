@@ -34,6 +34,9 @@ Charts (tap or drag the line charts to inspect a point):
 ### Vehicles
 Track multiple vehicles, each with its own history and dashboard. Switch vehicles from the toolbar on the Dashboard and Fill-Ups tabs.
 
+### iCloud sync
+Your vehicles and fill-up history sync automatically across all your devices through your private iCloud database (SwiftData + CloudKit). Nobody else can see your data — it lives in your personal iCloud account. If iCloud isn't available (not signed in, or the capability isn't set up yet), the app falls back to local-only storage and keeps working.
+
 ## Requirements
 
 - Xcode 16 or later
@@ -42,11 +45,20 @@ Track multiple vehicles, each with its own history and dashboard. Switch vehicle
 ## Getting started
 
 1. Open `FuelTracker.xcodeproj` in Xcode.
-2. In the target's *Signing & Capabilities* tab, select your development team and (optionally) change the bundle identifier from `com.example.FuelTracker`.
+2. In the target's *Signing & Capabilities* tab, select your development team and change the bundle identifier from `com.example.FuelTracker` to something unique (e.g. `com.yourname.FuelTracker`).
 3. Build and run on an iPhone or the iOS Simulator.
 4. Add a vehicle in the **Vehicles** tab, then log fill-ups with the **+** button.
 
-All data is stored on-device with SwiftData.
+### Enabling iCloud sync
+
+Sync requires a **paid Apple Developer Program membership** (free personal teams can't use the iCloud capability). One-time setup:
+
+1. In *Signing & Capabilities*, the **iCloud** (CloudKit) and **Push Notifications** capabilities are already declared in `FuelTracker/FuelTracker.entitlements`.
+2. Update the iCloud container identifier to match your bundle identifier: replace `iCloud.com.example.FuelTracker` in the entitlements file (or via the capability editor's container list) with `iCloud.<your bundle id>`.
+3. Let Xcode register the App ID and container with your team (automatic signing does this on first build).
+4. Run on devices signed into the same iCloud account — changes sync automatically, including in the background via silent push.
+
+Without those steps the app still runs; data just stays on-device.
 
 ## Project structure
 

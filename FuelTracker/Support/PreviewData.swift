@@ -5,7 +5,7 @@ import SwiftData
 @MainActor
 enum PreviewData {
     static let container: ModelContainer = {
-        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let config = ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         let container = try! ModelContainer(
             for: Vehicle.self, FuelEntry.self,
             configurations: config

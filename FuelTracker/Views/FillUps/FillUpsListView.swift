@@ -13,11 +13,11 @@ struct FillUpsListView: View {
     @State private var entryBeingEdited: FuelEntry?
 
     private var entries: [FuelEntry] {
-        (selectedVehicle?.entries ?? []).sorted { $0.date > $1.date }
+        (selectedVehicle?.fillUps ?? []).sorted { $0.date > $1.date }
     }
 
     private var statistics: FuelStatistics {
-        FuelStatistics(entries: selectedVehicle?.entries ?? [])
+        FuelStatistics(entries: selectedVehicle?.fillUps ?? [])
     }
 
     var body: some View {

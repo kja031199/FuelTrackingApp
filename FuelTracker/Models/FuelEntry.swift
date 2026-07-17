@@ -1,19 +1,21 @@
 import Foundation
 import SwiftData
 
+// CloudKit-synced models can't use unique constraints and every attribute
+// needs a default value.
 @Model
 final class FuelEntry {
-    @Attribute(.unique) var id: UUID
-    var date: Date
+    var id: UUID = UUID()
+    var date: Date = Date.now
     /// Odometer reading at the time of the fill-up, in miles.
-    var odometer: Double
-    var gallons: Double
-    var pricePerGallon: Double
+    var odometer: Double = 0
+    var gallons: Double = 0
+    var pricePerGallon: Double = 0
     /// A full tank lets the app compute exact MPG between fills.
-    var isFullTank: Bool
-    var fuelGradeRaw: String
-    var station: String
-    var notes: String
+    var isFullTank: Bool = true
+    var fuelGradeRaw: String = FuelGrade.regular.rawValue
+    var station: String = ""
+    var notes: String = ""
 
     var vehicle: Vehicle?
 
