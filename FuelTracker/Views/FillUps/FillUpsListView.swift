@@ -16,11 +16,10 @@ struct FillUpsListView: View {
         (selectedVehicle?.fillUps ?? []).sorted { $0.date > $1.date }
     }
 
-    private var statistics: FuelStatistics {
-        FuelStatistics(entries: selectedVehicle?.fillUps ?? [])
-    }
-
     var body: some View {
+        // Computed once per render and shared by every row.
+        let statistics = FuelStatistics(entries: selectedVehicle?.fillUps ?? [])
+
         NavigationStack {
             Group {
                 if selectedVehicle == nil {

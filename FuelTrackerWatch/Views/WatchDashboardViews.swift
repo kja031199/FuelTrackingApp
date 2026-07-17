@@ -1,7 +1,8 @@
 import SwiftUI
 import Charts
 
-/// Compact KPI grid shown below the fill-up form.
+/// Compact KPI grid shown below the fill-up form, built from the same
+/// shared KPI definitions as the iPhone dashboard.
 struct WatchKPISection: View {
     let statistics: FuelStatistics
 
@@ -11,40 +12,25 @@ struct WatchKPISection: View {
                 .font(.headline)
 
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)], spacing: 6) {
-                WatchKPICell(title: "Avg MPG", value: statistics.averageMPG.map(Format.mpg), color: .blue)
-                WatchKPICell(title: "Last MPG", value: statistics.lastMPG.map(Format.mpg), color: .blue)
-                WatchKPICell(title: "Spent", value: Format.currency(statistics.totalSpent), color: .purple)
-                WatchKPICell(
-                    title: "Cost/Mi",
-                    value: statistics.costPerMile.map {
-                        $0.formatted(.currency(code: Format.currencyCode).precision(.fractionLength(2)))
-                    },
-                    color: .purple
-                )
-                WatchKPICell(title: "Avg $/Gal", value: statistics.averagePricePerGallon.map(Format.fuelPrice), color: .orange)
-                WatchKPICell(
-                    title: "Miles",
-                    value: statistics.milesTracked.formatted(.number.notation(.compactName).precision(.fractionLength(0...1))),
-                    color: .teal
-                )
+                ForEach(statistics.compactKPIs) { kpi in
+                    WatchKPICell(kpi: kpi)
+                }
             }
         }
     }
 }
 
 struct WatchKPICell: View {
-    let title: String
-    let value: String?
-    let color: Color
+    let kpi: KPI
 
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(title)
+            Text(kpi.title)
                 .font(.system(size: 11))
-                .foregroundStyle(color)
+                .foregroundStyle(kpi.metric.color)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
-            Text(value ?? "—")
+            Text(kpi.value ?? "—")
                 .font(.system(.footnote, design: .rounded).weight(.semibold))
                 .monospacedDigit()
                 .lineLimit(1)
@@ -57,7 +43,7 @@ struct WatchKPICell: View {
     }
 }
 
-/// Simplified single-series charts sized for the watch screen.
+/// Compact charts using the shared metric chart components.
 struct WatchChartsSection: View {
     let statistics: FuelStatistics
 
@@ -65,51 +51,34 @@ struct WatchChartsSection: View {
         VStack(alignment: .leading, spacing: 12) {
             if statistics.mpgPoints.count >= 2 {
                 chartCard("MPG") {
-                    Chart(statistics.mpgPoints) { point in
-                        LineMark(
-                            x: .value("Date", point.date),
-                            y: .value("MPG", point.mpg)
-                        )
-                        .foregroundStyle(.blue)
-                        .lineStyle(StrokeStyle(lineWidth: 2))
-                        .interpolationMethod(.monotone)
-                    }
-                    .chartYScale(domain: .automatic(includesZero: false))
-                    .chartXAxis(.hidden)
+                    MetricLineChart(
+                        points: statistics.mpgSeries,
+                        metric: .economy,
+                        compact: true,
+                        valueLabel: Format.mpg
+                    )
                 }
             }
 
             if statistics.pricePoints.count >= 2 {
                 chartCard("Gas Price") {
-                    Chart(statistics.pricePoints) { point in
-                        LineMark(
-                            x: .value("Date", point.date),
-                            y: .value("Price", point.pricePerGallon)
-                        )
-                        .foregroundStyle(.orange)
-                        .lineStyle(StrokeStyle(lineWidth: 2))
-                        .interpolationMethod(.monotone)
-                    }
-                    .chartYScale(domain: .automatic(includesZero: false))
-                    .chartXAxis(.hidden)
+                    MetricLineChart(
+                        points: statistics.priceSeries,
+                        metric: .price,
+                        compact: true,
+                        valueLabel: Format.fuelPrice
+                    )
                 }
             }
 
             if statistics.monthlyTotals.count >= 2 {
                 chartCard("Monthly Spend") {
-                    Chart(statistics.monthlyTotals) { total in
-                        BarMark(
-                            x: .value("Month", total.month, unit: .month),
-                            y: .value("Spent", total.totalSpent)
-                        )
-                        .foregroundStyle(.purple)
-                        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 2, topTrailingRadius: 2))
-                    }
-                    .chartXAxis {
-                        AxisMarks(values: .stride(by: .month)) { _ in
-                            AxisValueLabel(format: .dateTime.month(.narrow), centered: true)
-                        }
-                    }
+                    MonthlyBarChart(
+                        totals: statistics.monthlyTotals,
+                        value: \.totalSpent,
+                        metric: .spending,
+                        compact: true
+                    )
                 }
             }
         }

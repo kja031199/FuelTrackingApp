@@ -18,6 +18,13 @@
 			remoteGlobalIDString = F2000004000000000000000B;
 			remoteInfo = FuelTrackerWatch;
 		};
+		F3000009000000000000000C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F1000006000000000000000A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F1000005000000000000000A;
+			remoteInfo = FuelTracker;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -37,6 +44,7 @@
 /* Begin PBXFileReference section */
 		F1000004000000000000000A /* FuelTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FuelTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F2000003000000000000000B /* FuelTrackerWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FuelTrackerWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F3000002000000000000000C /* FuelTrackerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FuelTrackerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -53,6 +61,11 @@
 		F2000002000000000000000B /* Shared */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		F300000B000000000000000C /* FuelTrackerTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = FuelTrackerTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -72,6 +85,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F3000004000000000000000C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -80,6 +100,7 @@
 			children = (
 				F1000002000000000000000A /* FuelTracker */,
 				F2000001000000000000000B /* FuelTrackerWatch */,
+				F300000B000000000000000C /* FuelTrackerTests */,
 				F2000002000000000000000B /* Shared */,
 				F1000003000000000000000A /* Products */,
 			);
@@ -90,6 +111,7 @@
 			children = (
 				F1000004000000000000000A /* FuelTracker.app */,
 				F2000003000000000000000B /* FuelTrackerWatch.app */,
+				F3000002000000000000000C /* FuelTrackerTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -145,6 +167,29 @@
 			productReference = F2000003000000000000000B /* FuelTrackerWatch.app */;
 			productType = "com.apple.product-type.application";
 		};
+		F3000001000000000000000C /* FuelTrackerTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F3000006000000000000000C /* Build configuration list for PBXNativeTarget "FuelTrackerTests" */;
+			buildPhases = (
+				F3000003000000000000000C /* Sources */,
+				F3000004000000000000000C /* Frameworks */,
+				F3000005000000000000000C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F300000A000000000000000C /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				F300000B000000000000000C /* FuelTrackerTests */,
+			);
+			name = FuelTrackerTests;
+			packageProductDependencies = (
+			);
+			productName = FuelTrackerTests;
+			productReference = F3000002000000000000000C /* FuelTrackerTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -160,6 +205,10 @@
 					};
 					F2000004000000000000000B = {
 						CreatedOnToolsVersion = 16.0;
+					};
+					F3000001000000000000000C = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = F1000005000000000000000A;
 					};
 				};
 			};
@@ -179,6 +228,7 @@
 			targets = (
 				F1000005000000000000000A /* FuelTracker */,
 				F2000004000000000000000B /* FuelTrackerWatch */,
+				F3000001000000000000000C /* FuelTrackerTests */,
 			);
 		};
 /* End PBXProject section */
@@ -192,6 +242,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		F2000007000000000000000B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F3000005000000000000000C /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -215,6 +272,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F3000003000000000000000C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -222,6 +286,11 @@
 			isa = PBXTargetDependency;
 			target = F2000004000000000000000B /* FuelTrackerWatch */;
 			targetProxy = F200000B000000000000000B /* PBXContainerItemProxy */;
+		};
+		F300000A000000000000000C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F1000005000000000000000A /* FuelTracker */;
+			targetProxy = F3000009000000000000000C /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -468,6 +537,44 @@
 			};
 			name = Release;
 		};
+		F3000007000000000000000C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.FuelTrackerTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FuelTracker.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/FuelTracker";
+			};
+			name = Debug;
+		};
+		F3000008000000000000000C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.FuelTrackerTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FuelTracker.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/FuelTracker";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -494,6 +601,15 @@
 			buildConfigurations = (
 				F2000009000000000000000B /* Debug */,
 				F200000A000000000000000B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F3000006000000000000000C /* Build configuration list for PBXNativeTarget "FuelTrackerTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F3000007000000000000000C /* Debug */,
+				F3000008000000000000000C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

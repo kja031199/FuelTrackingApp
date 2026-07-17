@@ -69,19 +69,32 @@ Without those steps the app still runs; data just stays on-device.
 ## Project structure
 
 ```
-Shared/                           # Compiled into both apps
+Shared/                           # Compiled into both apps — single source of truth
 ├── Models/                       # SwiftData models (Vehicle, FuelEntry, FuelGrade)
 ├── Statistics/
-│   └── FuelStatistics.swift      # All KPI & chart math (MPG segments, monthly rollups)
-└── Support/                      # Formatters, preview sample data
-FuelTracker/                      # iPhone app
-├── FuelTrackerApp.swift          # App entry point + SwiftData container
+│   ├── FuelStatistics.swift      # All KPI & chart math (MPG segments, monthly rollups)
+│   └── KPI.swift                 # Formatted KPI definitions for both dashboards
+├── Views/
+│   └── MetricCharts.swift        # Generic line/bar chart components (full & compact modes)
+└── Support/
+    ├── ModelContainerFactory.swift  # CloudKit container with local fallback; in-memory for tests
+    ├── FillUpFormModel.swift        # Form state, validation & saving for both entry screens
+    ├── Metric.swift                 # Fixed metric→color mapping
+    └── Formatters.swift             # Number/currency formatting
+FuelTracker/                      # iPhone app (thin view layer)
+├── FuelTrackerApp.swift
 ├── ContentView.swift             # Tab bar + vehicle picker
 └── Views/
-    ├── Dashboard/                # KPI grid + Swift Charts
+    ├── Dashboard/                # KPI grid + chart cards
     ├── FillUps/                  # History list + add/edit form
     └── Vehicles/                 # Vehicle management
-FuelTrackerWatch/                 # Apple Watch app
-├── FuelTrackerWatchApp.swift     # Entry point + shared iCloud container
+FuelTrackerWatch/                 # Apple Watch app (thin view layer)
+├── FuelTrackerWatchApp.swift
 └── Views/                        # Quick-entry form, compact KPIs & charts
+FuelTrackerTests/                 # Unit tests (Swift Testing)
+└── FuelStatisticsTests.swift     # Statistics engine + form model coverage
 ```
+
+## Running the tests
+
+Press **⌘U** in Xcode (or Product → Test) with the FuelTracker scheme selected. The suite covers the statistics engine — full-tank MPG segmentation, partial-fill handling, weighted averages, cost per mile, monthly rollups — and the shared fill-up form model (validation, saving, editing, odometer sanity check).
