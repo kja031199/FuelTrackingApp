@@ -35,11 +35,10 @@ struct DashboardView: View {
         return all.filter { $0.date >= cutoff }
     }
 
-    private var statistics: FuelStatistics {
-        FuelStatistics(entries: filteredEntries)
-    }
-
     var body: some View {
+        // Computed once per render; every KPI and chart reads from this.
+        let statistics = FuelStatistics(entries: filteredEntries)
+
         NavigationStack {
             Group {
                 if selectedVehicle == nil {
@@ -48,7 +47,7 @@ struct DashboardView: View {
                         systemImage: "fuelpump",
                         description: Text("Add a vehicle in the Vehicles tab, then log fill-ups to see your fuel economy and spending here.")
                     )
-                } else if filteredEntries.isEmpty {
+                } else if statistics.fillUpCount == 0 {
                     ContentUnavailableView {
                         Label("No Data Yet", systemImage: "chart.xyaxis.line")
                     } description: {
@@ -62,7 +61,7 @@ struct DashboardView: View {
                         }
                     }
                 } else {
-                    dashboardContent
+                    dashboardContent(statistics)
                 }
             }
             .navigationTitle("Dashboard")
@@ -89,7 +88,7 @@ struct DashboardView: View {
         }
     }
 
-    private var dashboardContent: some View {
+    private func dashboardContent(_ statistics: FuelStatistics) -> some View {
         ScrollView {
             VStack(spacing: 16) {
                 Picker("Time Range", selection: $timeRange) {
@@ -99,11 +98,20 @@ struct DashboardView: View {
                 }
                 .pickerStyle(.segmented)
 
-                kpiGrid
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                    ForEach(statistics.dashboardKPIs) { kpi in
+                        KPICard(kpi: kpi)
+                    }
+                }
 
                 if statistics.mpgPoints.count >= 2 {
                     ChartCard(title: "Fuel Economy", subtitle: "MPG per full-tank fill-up") {
-                        MPGChart(points: statistics.mpgPoints, average: statistics.averageMPG)
+                        MetricLineChart(
+                            points: statistics.mpgSeries,
+                            metric: .economy,
+                            average: statistics.averageMPG,
+                            valueLabel: { "\(Format.mpg($0)) MPG" }
+                        )
                     }
                 } else {
                     mpgHint
@@ -111,88 +119,48 @@ struct DashboardView: View {
 
                 if statistics.pricePoints.count >= 2 {
                     ChartCard(title: "Gas Price", subtitle: "Price per gallon you paid") {
-                        PriceChart(points: statistics.pricePoints)
+                        MetricLineChart(
+                            points: statistics.priceSeries,
+                            metric: .price,
+                            valueLabel: Format.fuelPrice,
+                            yAxisLabel: Format.plainCurrency
+                        )
                     }
                 }
 
                 if statistics.odometerPoints.count >= 2 {
                     ChartCard(title: "Odometer", subtitle: "Mileage recorded at each fill-up") {
-                        OdometerChart(points: statistics.odometerPoints)
+                        MetricLineChart(
+                            points: statistics.odometerSeries,
+                            metric: .distance,
+                            valueLabel: { "\(Format.odometer($0)) mi" },
+                            yAxisLabel: Format.compactMiles
+                        )
                     }
                 }
 
                 if statistics.monthlyTotals.count >= 2 {
                     ChartCard(title: "Monthly Spending", subtitle: "Total fuel cost by month") {
-                        MonthlySpendChart(totals: statistics.monthlyTotals)
+                        MonthlyBarChart(
+                            totals: statistics.monthlyTotals,
+                            value: \.totalSpent,
+                            metric: .spending,
+                            yAxisLabel: Format.wholeCurrency
+                        )
                     }
 
                     ChartCard(title: "Monthly Distance", subtitle: "Miles driven by month") {
-                        MonthlyMilesChart(totals: statistics.monthlyTotals)
+                        MonthlyBarChart(
+                            totals: statistics.monthlyTotals,
+                            value: \.miles,
+                            metric: .distance
+                        )
                     }
                 }
             }
             .padding()
         }
         .background(Color(.systemGroupedBackground))
-    }
-
-    private var kpiGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-            KPICard(
-                title: "Avg MPG",
-                value: statistics.averageMPG.map(Format.mpg),
-                icon: "leaf.fill",
-                color: .blue
-            )
-            KPICard(
-                title: "Last MPG",
-                value: statistics.lastMPG.map(Format.mpg),
-                detail: statistics.bestMPG.map { "Best: \(Format.mpg($0))" },
-                icon: "gauge.with.dots.needle.67percent",
-                color: .blue
-            )
-            KPICard(
-                title: "Total Spent",
-                value: Format.currency(statistics.totalSpent),
-                detail: statistics.averageMonthlySpend.map { "\(Format.currency($0))/mo avg" },
-                icon: "dollarsign.circle.fill",
-                color: .purple
-            )
-            KPICard(
-                title: "Cost per Mile",
-                value: statistics.costPerMile.map { $0.formatted(.currency(code: Format.currencyCode).precision(.fractionLength(2...3))) },
-                icon: "road.lanes",
-                color: .purple
-            )
-            KPICard(
-                title: "Avg Price/Gal",
-                value: statistics.averagePricePerGallon.map(Format.fuelPrice),
-                detail: statistics.lastPricePerGallon.map { "Last: \(Format.fuelPrice($0))" },
-                icon: "fuelpump.fill",
-                color: .orange
-            )
-            KPICard(
-                title: "Miles Tracked",
-                value: Format.odometer(statistics.milesTracked),
-                detail: statistics.averageMilesBetweenFillUps.map { "\(Format.odometer($0)) mi/fill avg" },
-                icon: "point.topleft.down.to.point.bottomright.curvepath.fill",
-                color: .teal
-            )
-            KPICard(
-                title: "Fill-Ups",
-                value: "\(statistics.fillUpCount)",
-                detail: statistics.averageGallonsPerFillUp.map { "\(Format.gallons($0)) gal avg" },
-                icon: "list.number",
-                color: .teal
-            )
-            KPICard(
-                title: "Total Gallons",
-                value: Format.gallons(statistics.totalGallons),
-                detail: statistics.averageFillUpCost.map { "\(Format.currency($0))/fill avg" },
-                icon: "drop.fill",
-                color: .orange
-            )
-        }
     }
 
     private var mpgHint: some View {

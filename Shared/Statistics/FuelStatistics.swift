@@ -121,6 +121,20 @@ struct FuelStatistics {
         mpgByEntryID[entry.id]
     }
 
+    // MARK: - Chart series
+
+    var mpgSeries: [DateValuePoint] {
+        mpgPoints.map { DateValuePoint(id: $0.id, date: $0.date, value: $0.mpg) }
+    }
+
+    var priceSeries: [DateValuePoint] {
+        pricePoints.map { DateValuePoint(id: $0.id, date: $0.date, value: $0.pricePerGallon) }
+    }
+
+    var odometerSeries: [DateValuePoint] {
+        odometerPoints.map { DateValuePoint(id: $0.id, date: $0.date, value: $0.odometer) }
+    }
+
     // MARK: - KPIs
 
     var fillUpCount: Int { entries.count }

@@ -2,32 +2,28 @@ import SwiftUI
 
 /// A single stat tile on the dashboard.
 struct KPICard: View {
-    let title: String
-    let value: String?
-    var detail: String? = nil
-    let icon: String
-    let color: Color
+    let kpi: KPI
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                Image(systemName: icon)
+                Image(systemName: kpi.icon)
                     .font(.caption)
-                    .foregroundStyle(color)
-                Text(title)
+                    .foregroundStyle(kpi.metric.color)
+                Text(kpi.title)
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
 
-            Text(value ?? "—")
+            Text(kpi.value ?? "—")
                 .font(.title2.weight(.semibold))
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
 
-            if let detail {
+            if let detail = kpi.detail {
                 Text(detail)
                     .font(.caption2)
                     .foregroundStyle(.secondary)

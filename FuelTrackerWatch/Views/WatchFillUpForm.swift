@@ -3,50 +3,37 @@ import SwiftData
 import WatchKit
 
 /// Compact fill-up entry form — the first thing on the watch screen.
-/// Total cost is calculated live from gallons × price per gallon.
+/// Field state and validation live in the shared FillUpFormModel;
+/// total cost is calculated live from gallons × price per gallon.
 struct WatchFillUpForm: View {
     @Environment(\.modelContext) private var modelContext
     let vehicle: Vehicle?
 
-    @State private var odometer: Double?
-    @State private var gallons: Double?
-    @State private var pricePerGallon: Double?
-    @State private var isFullTank = true
+    @State private var form = FillUpFormModel()
     @State private var justSaved = false
-
-    private var totalCost: Double {
-        (gallons ?? 0) * (pricePerGallon ?? 0)
-    }
-
-    private var canSave: Bool {
-        vehicle != nil
-            && (odometer ?? 0) > 0
-            && (gallons ?? 0) > 0
-            && (pricePerGallon ?? 0) > 0
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("New Fill-Up")
                 .font(.headline)
 
-            numberField("Odometer (mi)", value: $odometer)
-            numberField("Gallons", value: $gallons)
-            numberField("Price / Gallon", value: $pricePerGallon)
+            numberField("Odometer (mi)", value: $form.odometer)
+            numberField("Gallons", value: $form.gallons)
+            numberField("Price / Gallon", value: $form.pricePerGallon)
 
             HStack {
                 Text("Total")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text(Format.currency(totalCost))
+                Text(Format.currency(form.totalCost))
                     .font(.body.weight(.semibold))
                     .monospacedDigit()
-                    .foregroundStyle(totalCost > 0 ? .primary : .secondary)
+                    .foregroundStyle(form.totalCost > 0 ? .primary : .secondary)
             }
             .padding(.vertical, 2)
 
-            Toggle("Full tank", isOn: $isFullTank)
+            Toggle("Full tank", isOn: $form.isFullTank)
                 .font(.caption)
 
             Button {
@@ -59,7 +46,7 @@ struct WatchFillUpForm: View {
                 }
             }
             .buttonStyle(.borderedProminent)
-            .disabled(!canSave)
+            .disabled(!form.canSave || vehicle == nil)
         }
     }
 
@@ -73,22 +60,12 @@ struct WatchFillUpForm: View {
     }
 
     private func save() {
-        guard let vehicle, let odometer, let gallons, let pricePerGallon else { return }
+        guard let vehicle else { return }
 
-        let entry = FuelEntry(
-            odometer: odometer,
-            gallons: gallons,
-            pricePerGallon: pricePerGallon,
-            isFullTank: isFullTank,
-            vehicle: vehicle
-        )
-        modelContext.insert(entry)
+        form.date = .now
+        form.save(to: vehicle, in: modelContext)
+        form.resetForNextEntry()
         WKInterfaceDevice.current().play(.success)
-
-        self.odometer = nil
-        self.gallons = nil
-        self.pricePerGallon = nil
-        isFullTank = true
 
         justSaved = true
         Task {
