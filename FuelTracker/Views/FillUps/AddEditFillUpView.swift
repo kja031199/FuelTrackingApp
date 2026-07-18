@@ -13,6 +13,10 @@ struct AddEditFillUpView: View {
     private let defaultVehicle: Vehicle?
     @State private var form: FillUpFormModel
     @State private var selectedVehicleID: UUID?
+    @State private var showingScanner = false
+    @State private var stationLocator = StationLocator()
+    @State private var isLocatingStation = false
+    @State private var stationHint: String?
 
     init(entry: FuelEntry? = nil, defaultVehicle: Vehicle? = nil) {
         self.defaultVehicle = entry?.vehicle ?? defaultVehicle
@@ -34,6 +38,16 @@ struct AddEditFillUpView: View {
                             }
                         }
                     }
+                }
+
+                Section {
+                    Button {
+                        showingScanner = true
+                    } label: {
+                        Label("Scan Pump Display", systemImage: "viewfinder")
+                    }
+                } footer: {
+                    Text("Point your camera at the pump and the gallons, price, and total are read automatically — on your device, nothing leaves your phone.")
                 }
 
                 Section {
@@ -84,14 +98,33 @@ struct AddEditFillUpView: View {
                         }
                     }
 
-                    TextField("Gas Station (optional)", text: $form.station)
+                    HStack {
+                        TextField("Gas Station (optional)", text: $form.station)
+                        Button {
+                            detectStation()
+                        } label: {
+                            if isLocatingStation {
+                                ProgressView()
+                            } else {
+                                Image(systemName: "location.fill")
+                            }
+                        }
+                        .buttonStyle(.borderless)
+                        .disabled(isLocatingStation)
+                        .accessibilityLabel("Detect gas station from my location")
+                    }
 
                     TextField("Notes (optional)", text: $form.notes, axis: .vertical)
                         .lineLimit(1...4)
                 } header: {
                     Text("Details")
                 } footer: {
-                    Text("Marking full tanks lets the app calculate exact MPG between fills. Leave it off for partial fills — those gallons still count toward the next full-tank MPG.")
+                    VStack(alignment: .leading, spacing: 6) {
+                        if let stationHint {
+                            Label(stationHint, systemImage: "location.slash")
+                        }
+                        Text("Marking full tanks lets the app calculate exact MPG between fills. Leave it off for partial fills — those gallons still count toward the next full-tank MPG.")
+                    }
                 }
             }
             .navigationTitle(form.isEditing ? "Edit Fill-Up" : "New Fill-Up")
@@ -105,10 +138,46 @@ struct AddEditFillUpView: View {
                         .disabled(!form.canSave || selectedVehicle == nil)
                 }
             }
+            .sheet(isPresented: $showingScanner) {
+                PumpScannerView { reading in
+                    if let gallons = reading.gallons {
+                        form.gallons = gallons
+                    }
+                    if let price = reading.pricePerGallon {
+                        form.pricePerGallon = price
+                    }
+                }
+            }
             .onAppear {
                 if selectedVehicleID == nil {
                     selectedVehicleID = defaultVehicle?.id ?? vehicles.first?.id
                 }
+                // Auto-fill the station for new entries once the user has
+                // granted location access (the button asks the first time).
+                if !form.isEditing, form.station.isEmpty, stationLocator.isAuthorized {
+                    detectStation()
+                }
+            }
+        }
+    }
+
+    private func detectStation() {
+        guard !isLocatingStation else { return }
+        isLocatingStation = true
+        stationHint = nil
+        Task {
+            defer { isLocatingStation = false }
+            do {
+                let station = try await stationLocator.detectStation()
+                form.station = station.name
+                form.latitude = station.latitude
+                form.longitude = station.longitude
+            } catch StationLocatorError.permissionDenied {
+                stationHint = "Allow location access in Settings to detect the station automatically."
+            } catch StationLocatorError.noStationNearby {
+                stationHint = "No gas station found nearby — you can type the name instead."
+            } catch {
+                stationHint = "Couldn't determine your location — you can type the station name instead."
             }
         }
     }

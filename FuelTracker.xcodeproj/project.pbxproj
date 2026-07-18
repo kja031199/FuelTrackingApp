@@ -425,6 +425,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = FuelTracker;
+				INFOPLIST_KEY_NSCameraUsageDescription = "FuelTracker uses the camera to read gallons and price straight off the gas pump display. Recognition happens on your device.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "FuelTracker uses your location once per fill-up to detect which gas station you're at.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIBackgroundModes = "remote-notification";
@@ -456,6 +458,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = FuelTracker;
+				INFOPLIST_KEY_NSCameraUsageDescription = "FuelTracker uses the camera to read gallons and price straight off the gas pump display. Recognition happens on your device.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "FuelTracker uses your location once per fill-up to detect which gas station you're at.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIBackgroundModes = "remote-notification";

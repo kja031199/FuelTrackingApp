@@ -16,6 +16,9 @@ final class FuelEntry {
     var fuelGradeRaw: String = FuelGrade.regular.rawValue
     var station: String = ""
     var notes: String = ""
+    /// Where the fill-up happened, when detected via location services.
+    var latitude: Double?
+    var longitude: Double?
 
     var vehicle: Vehicle?
 
@@ -29,6 +32,8 @@ final class FuelEntry {
         fuelGrade: FuelGrade = .regular,
         station: String = "",
         notes: String = "",
+        latitude: Double? = nil,
+        longitude: Double? = nil,
         vehicle: Vehicle? = nil
     ) {
         self.id = id
@@ -40,6 +45,8 @@ final class FuelEntry {
         self.fuelGradeRaw = fuelGrade.rawValue
         self.station = station
         self.notes = notes
+        self.latitude = latitude
+        self.longitude = longitude
         self.vehicle = vehicle
     }
 
