@@ -142,11 +142,14 @@ struct StatisticsHostileInputTests {
 
 @MainActor
 struct FormModelHostileInputTests {
-    private func makeVehicleContext() -> (ModelContext, Vehicle) {
+    // The container must be returned and held for the test's lifetime:
+    // a deallocated ModelContainer resets its context and destroys every
+    // model instance it owned, crashing the next property access.
+    private func makeVehicleContext() -> (ModelContainer, Vehicle) {
         let container = ModelContainerFactory.makeInMemory()
         let vehicle = Vehicle(name: "Test")
         container.mainContext.insert(vehicle)
-        return (container.mainContext, vehicle)
+        return (container, vehicle)
     }
 
     @Test func negativeAndZeroInputsBlockSaving() {
@@ -168,14 +171,14 @@ struct FormModelHostileInputTests {
     @Test func doubleTappedSaveInsertsExactlyOneEntry() {
         // Regression guard: save() used to insert a duplicate on the
         // second call; it now adopts the inserted entry and updates it.
-        let (context, vehicle) = makeVehicleContext()
+        let (container, vehicle) = makeVehicleContext()
         let form = FillUpFormModel()
         form.odometer = 12_000
         form.gallons = 10
         form.pricePerGallon = 3.5
 
-        form.save(to: vehicle, in: context)
-        form.save(to: vehicle, in: context)
+        form.save(to: vehicle, in: container.mainContext)
+        form.save(to: vehicle, in: container.mainContext)
 
         #expect(vehicle.fillUps.count == 1)
     }
@@ -183,18 +186,18 @@ struct FormModelHostileInputTests {
     @Test func saveResetSaveCreatesTwoDistinctEntries() {
         // The watch quick-entry loop: save, reset, save again must insert
         // a second entry and leave the first untouched.
-        let (context, vehicle) = makeVehicleContext()
+        let (container, vehicle) = makeVehicleContext()
         let form = FillUpFormModel()
         form.odometer = 12_000
         form.gallons = 10
         form.pricePerGallon = 3.5
-        form.save(to: vehicle, in: context)
+        form.save(to: vehicle, in: container.mainContext)
 
         form.resetForNextEntry()
         form.odometer = 12_300
         form.gallons = 9
         form.pricePerGallon = 3.6
-        form.save(to: vehicle, in: context)
+        form.save(to: vehicle, in: container.mainContext)
 
         #expect(vehicle.fillUps.count == 2)
         let odometers = Set(vehicle.fillUps.map(\.odometer))
@@ -203,10 +206,10 @@ struct FormModelHostileInputTests {
 
     @Test func invalidSaveDoesNotAdoptAnEntry() {
         // A failed save must not flip the form into editing mode.
-        let (context, vehicle) = makeVehicleContext()
+        let (container, vehicle) = makeVehicleContext()
         let form = FillUpFormModel()
         form.gallons = 10
-        form.save(to: vehicle, in: context)
+        form.save(to: vehicle, in: container.mainContext)
         #expect(!form.isEditing)
         #expect(vehicle.fillUps.isEmpty)
     }
