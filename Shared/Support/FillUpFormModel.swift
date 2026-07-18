@@ -15,6 +15,8 @@ final class FillUpFormModel {
     var fuelGrade: FuelGrade = .regular
     var station = ""
     var notes = ""
+    var latitude: Double?
+    var longitude: Double?
 
     /// Entry being edited, or nil when creating a new one.
     private(set) var editedEntry: FuelEntry?
@@ -31,6 +33,8 @@ final class FillUpFormModel {
         fuelGrade = entry.fuelGrade
         station = entry.station
         notes = entry.notes
+        latitude = entry.latitude
+        longitude = entry.longitude
     }
 
     var isEditing: Bool {
@@ -71,6 +75,8 @@ final class FillUpFormModel {
             entry.fuelGrade = fuelGrade
             entry.station = station
             entry.notes = notes
+            entry.latitude = latitude
+            entry.longitude = longitude
         } else {
             let entry = FuelEntry(
                 date: date,
@@ -81,6 +87,8 @@ final class FillUpFormModel {
                 fuelGrade: fuelGrade,
                 station: station,
                 notes: notes,
+                latitude: latitude,
+                longitude: longitude,
                 vehicle: vehicle
             )
             context.insert(entry)
@@ -96,5 +104,7 @@ final class FillUpFormModel {
         isFullTank = true
         station = ""
         notes = ""
+        latitude = nil
+        longitude = nil
     }
 }
