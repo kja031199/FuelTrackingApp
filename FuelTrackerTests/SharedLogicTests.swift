@@ -292,7 +292,9 @@ struct FormatTests {
     }
 
     @Test func odometerAllowsUpToOneDecimal() {
-        #expect(digits(Format.odometer(42_150.25)) == "421503")
+        #expect(digits(Format.odometer(42_150.26)) == "421503")
+        // Halfway values use the formatter's banker's rounding (half to even).
+        #expect(digits(Format.odometer(42_150.25)) == "421502")
         #expect(digits(Format.odometer(42_150)) == "42150")
     }
 
