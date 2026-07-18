@@ -92,10 +92,14 @@ final class FillUpFormModel {
                 vehicle: vehicle
             )
             context.insert(entry)
+            // Adopt the inserted entry so a repeated save (e.g. a
+            // double-tapped Save button) updates it instead of
+            // inserting a duplicate.
+            editedEntry = entry
         }
     }
 
-    /// Clears the numeric fields for the next quick entry (watch flow).
+    /// Clears the fields for the next quick entry (watch flow).
     func resetForNextEntry() {
         date = .now
         odometer = nil
@@ -106,5 +110,7 @@ final class FillUpFormModel {
         notes = ""
         latitude = nil
         longitude = nil
+        // Detach from the previously saved entry so the next save inserts.
+        editedEntry = nil
     }
 }

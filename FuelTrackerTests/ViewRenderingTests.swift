@@ -34,6 +34,29 @@ private enum Scenario {
         return (container, vehicle)
     }
 
+    /// A vehicle whose history is full of data-entry accidents: duplicate
+    /// odometers, a zero-gallon fill, a free fill, partial-only stretches,
+    /// same-day entries, and a future date. Screens must render it all.
+    static func pathological() -> (ModelContainer, Vehicle) {
+        let (container, vehicle) = vehicleOnly()
+        let entries = [
+            FuelEntry(date: day(2025, 1, 5), odometer: 10_000, gallons: 10, pricePerGallon: 3.0, vehicle: vehicle),
+            FuelEntry(date: day(2025, 1, 5), odometer: 10_000, gallons: 10, pricePerGallon: 3.0, vehicle: vehicle),
+            FuelEntry(date: day(2025, 1, 12), odometer: 10_300, gallons: 0, pricePerGallon: 3.0, vehicle: vehicle),
+            FuelEntry(date: day(2025, 1, 20), odometer: 10_500, gallons: 5, pricePerGallon: 0, vehicle: vehicle),
+            FuelEntry(date: day(2025, 2, 2), odometer: 10_700, gallons: 4, pricePerGallon: 3.2, isFullTank: false, vehicle: vehicle),
+            FuelEntry(date: day(2030, 6, 1), odometer: 11_000, gallons: 9, pricePerGallon: 3.4, vehicle: vehicle),
+        ]
+        for entry in entries {
+            container.mainContext.insert(entry)
+        }
+        return (container, vehicle)
+    }
+
+    private static func day(_ year: Int, _ month: Int, _ dayOfMonth: Int) -> Date {
+        Calendar.current.date(from: DateComponents(year: year, month: month, day: dayOfMonth))!
+    }
+
     /// A vehicle with six deterministic fill-ups (one partial) spanning
     /// three months, enough to light up every KPI and chart.
     static func populated() -> (ModelContainer, Vehicle) {
@@ -212,5 +235,72 @@ struct ComponentRenderingTests {
             ChartCard(title: "Title", subtitle: "Subtitle") { Text("Content") },
             container: Scenario.empty()
         )
+    }
+}
+
+// MARK: - Hostile-data rendering
+
+@MainActor
+struct AdversarialRenderingTests {
+    @Test func screensSurvivePathologicalHistory() {
+        // Duplicate odometers, zero gallons, free fuel, partial-only runs,
+        // and future dates — every screen must render without incident.
+        let (container, vehicle) = Scenario.pathological()
+        render(
+            DashboardView(selectedVehicle: vehicle, vehicles: [vehicle], selectedVehicleID: .constant("")),
+            container: container
+        )
+        render(
+            FillUpsListView(selectedVehicle: vehicle, vehicles: [vehicle], selectedVehicleID: .constant("")),
+            container: container
+        )
+        render(ContentView(), container: container)
+    }
+
+    @Test func lineChartRendersWithZeroAndOnePoint() {
+        // The dashboard gates charts behind a two-point minimum, but the
+        // component itself must tolerate less if a caller forgets.
+        render(
+            MetricLineChart(points: [], metric: .economy, valueLabel: Format.mpg),
+            container: Scenario.empty()
+        )
+        let single = [DateValuePoint(id: UUID(), date: .now, value: 32)]
+        render(
+            MetricLineChart(points: single, metric: .economy, average: 32, valueLabel: Format.mpg),
+            container: Scenario.empty()
+        )
+    }
+
+    @Test func barChartRendersWithEmptyAndAllZeroData() {
+        render(
+            MonthlyBarChart(totals: [], value: \.totalSpent, metric: .spending),
+            container: Scenario.empty()
+        )
+        let zeroed = [MonthlyTotal(id: .now, month: .now, totalSpent: 0, totalGallons: 0, miles: 0, fillUpCount: 0)]
+        render(
+            MonthlyBarChart(totals: zeroed, value: \.totalSpent, metric: .spending),
+            container: Scenario.empty()
+        )
+    }
+
+    @Test func kpiCardSurvivesAbsurdlyLongStrings() {
+        let kpi = KPI(
+            title: String(repeating: "Very Long Title ", count: 20),
+            value: String(repeating: "9", count: 60),
+            detail: String(repeating: "detail ", count: 40),
+            icon: "leaf.fill",
+            metric: .economy
+        )
+        render(KPICard(kpi: kpi), container: Scenario.empty())
+    }
+
+    @Test func addFillUpFormRendersWithNoVehiclesAtAll() {
+        render(AddEditFillUpView(), container: Scenario.empty())
+    }
+
+    @Test func pumpScannerFallsBackGracefullyWithoutACamera() {
+        // In the Simulator/test host there is no camera, so this executes
+        // the ContentUnavailableView branch rather than live scanning.
+        render(PumpScannerView { _ in }, container: Scenario.empty())
     }
 }
