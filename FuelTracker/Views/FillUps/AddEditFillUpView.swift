@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 import SwiftData
 
@@ -17,6 +18,10 @@ struct AddEditFillUpView: View {
     @State private var stationLocator = StationLocator()
     @State private var isLocatingStation = false
     @State private var stationHint: String?
+    @State private var photoItem: PhotosPickerItem?
+    @State private var isImportingPhoto = false
+    @State private var importSummary: String?
+    @State private var importHint: String?
 
     init(entry: FuelEntry? = nil, defaultVehicle: Vehicle? = nil) {
         self.defaultVehicle = entry?.vehicle ?? defaultVehicle
@@ -46,8 +51,29 @@ struct AddEditFillUpView: View {
                     } label: {
                         Label("Scan Pump Display", systemImage: "viewfinder")
                     }
+
+                    PhotosPicker(selection: $photoItem, matching: .images) {
+                        HStack {
+                            Label("Import Pump Photo", systemImage: "photo.on.rectangle.angled")
+                            Spacer()
+                            if isImportingPhoto {
+                                ProgressView()
+                            }
+                        }
+                    }
+                    .disabled(isImportingPhoto)
                 } footer: {
-                    Text("Point your camera at the pump and the gallons, price, and total are read automatically — on your device, nothing leaves your phone.")
+                    VStack(alignment: .leading, spacing: 6) {
+                        if let importSummary {
+                            Label(importSummary, systemImage: "sparkles")
+                                .foregroundStyle(.tint)
+                        }
+                        if let importHint {
+                            Label(importHint, systemImage: "exclamationmark.circle")
+                                .foregroundStyle(.orange)
+                        }
+                        Text("Scan live at the pump, or pick a photo you took earlier — gallons and price are read from the display, and the date, time, and gas station come from the photo itself. Everything happens on your device.")
+                    }
                 }
 
                 Section {
@@ -148,6 +174,11 @@ struct AddEditFillUpView: View {
                     }
                 }
             }
+            .onChange(of: photoItem) { _, newItem in
+                if let newItem {
+                    importPhoto(newItem)
+                }
+            }
             .onAppear {
                 if selectedVehicleID == nil {
                     selectedVehicleID = defaultVehicle?.id ?? vehicles.first?.id
@@ -157,6 +188,61 @@ struct AddEditFillUpView: View {
                 if !form.isEditing, form.station.isEmpty, stationLocator.isAuthorized {
                     detectStation()
                 }
+            }
+        }
+    }
+
+    private func importPhoto(_ item: PhotosPickerItem) {
+        isImportingPhoto = true
+        importSummary = nil
+        importHint = nil
+        Task {
+            defer {
+                isImportingPhoto = false
+                photoItem = nil
+            }
+
+            guard let data = try? await item.loadTransferable(type: Data.self) else {
+                importHint = "Couldn't load that photo — try picking it again."
+                return
+            }
+
+            let imported = await PumpPhotoImporter.process(data: data)
+            guard imported.foundAnything else {
+                importHint = "Couldn't read pump numbers or metadata from that photo. A sharp, straight-on shot of the display works best."
+                return
+            }
+
+            var summaryParts: [String] = []
+
+            if let gallons = imported.reading.gallons {
+                form.gallons = gallons
+                summaryParts.append("\(Format.gallons(gallons)) gal")
+            }
+            if let price = imported.reading.pricePerGallon {
+                form.pricePerGallon = price
+                summaryParts.append("\(Format.fuelPrice(price))/gal")
+            }
+            if let capturedAt = imported.capturedAt {
+                form.date = capturedAt
+                summaryParts.append(capturedAt.formatted(date: .abbreviated, time: .shortened))
+            }
+            if let latitude = imported.latitude, let longitude = imported.longitude {
+                form.latitude = latitude
+                form.longitude = longitude
+                if let station = try? await stationLocator.nearestStation(latitude: latitude, longitude: longitude) {
+                    form.station = station.name
+                    form.latitude = station.latitude
+                    form.longitude = station.longitude
+                    summaryParts.append(station.name)
+                } else {
+                    summaryParts.append("location saved")
+                }
+            }
+
+            importSummary = "Imported: " + summaryParts.joined(separator: " · ")
+            if imported.reading.gallons == nil || imported.reading.pricePerGallon == nil {
+                importHint = "Couldn't read every pump number — fill in the rest manually."
             }
         }
     }
