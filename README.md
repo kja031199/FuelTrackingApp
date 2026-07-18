@@ -46,8 +46,8 @@ A companion watchOS app for logging fill-ups from your wrist. The main screen is
 
 To run it in Xcode: select the **FuelTrackerWatch** scheme, pick an Apple Watch simulator, and hit Run. (Xcode needs the watchOS platform downloaded — Settings → Components.)
 
-### iCloud sync
-Your vehicles and fill-up history sync automatically across all your devices through your private iCloud database (SwiftData + CloudKit). Nobody else can see your data — it lives in your personal iCloud account. If iCloud isn't available (not signed in, or the capability isn't set up yet), the app falls back to local-only storage and keeps working.
+### iCloud sync (optional, off by default)
+The app is fully wired for private iCloud sync (SwiftData + CloudKit) across iPhone and watch, but the entitlements ship **disabled** so the project builds and runs on-device with a free Apple ID — personal teams can't use the iCloud capability. With sync off, data is stored locally on each device and everything works offline. To turn sync on with a paid Apple Developer account, see "Enabling iCloud sync" below; no code changes are needed — the app detects the entitlement and starts syncing.
 
 ## Requirements
 
@@ -61,16 +61,24 @@ Your vehicles and fill-up history sync automatically across all your devices thr
 3. Build and run on an iPhone or the iOS Simulator.
 4. Add a vehicle in the **Vehicles** tab, then log fill-ups with the **+** button.
 
+### Running on your iPhone with a free Apple ID
+
+1. Plug your iPhone in, trust the Mac, and enable Developer Mode (Settings → Privacy & Security → Developer Mode).
+2. In *Signing & Capabilities*, pick your personal team for the FuelTracker, FuelTrackerWatch, and FuelTrackerTests targets.
+3. Select your iPhone as the run destination and press Run. On first install, trust yourself in Settings → General → VPN & Device Management.
+
+Free-account installs expire after 7 days — re-run from Xcode to refresh.
+
 ### Enabling iCloud sync
 
-Sync requires a **paid Apple Developer Program membership** (free personal teams can't use the iCloud capability). One-time setup:
+Sync requires a **paid Apple Developer Program membership**. One-time setup:
 
-1. In *Signing & Capabilities*, the **iCloud** (CloudKit) and **Push Notifications** capabilities are already declared in `FuelTracker/FuelTracker.entitlements`.
-2. Update the iCloud container identifier to match your bundle identifier: replace `iCloud.com.example.FuelTracker` in **both** entitlements files (`FuelTracker/FuelTracker.entitlements` and `FuelTrackerWatch/FuelTrackerWatch.entitlements`) with `iCloud.<your bundle id>` — the iPhone and watch apps must share the same container for sync to work.
+1. In each target's *Signing & Capabilities* tab, add the **iCloud** capability, check **CloudKit**, and add a container named `iCloud.<your bundle id>` — the iPhone and watch targets must share the same container. (This rewrites the entitlements files, which currently ship empty.)
+2. On the iPhone target only, also add **Push Notifications** and the **Background Modes → Remote notifications** checkbox so CloudKit can push changes in the background.
 3. Let Xcode register the App ID and container with your team (automatic signing does this on first build).
-4. Run on devices signed into the same iCloud account — changes sync automatically, including in the background via silent push.
+4. Run on devices signed into the same iCloud account — changes sync automatically.
 
-Without those steps the app still runs; data just stays on-device.
+The sync code is always present; it activates automatically when the entitlement exists and falls back to local storage when it doesn't.
 
 ## Project structure
 
