@@ -65,9 +65,20 @@ enum PumpPhotoImporter {
               let longitude = gps[kCGImagePropertyGPSLongitude] as? Double else {
             return nil
         }
-        let latitudeSign = (gps[kCGImagePropertyGPSLatitudeRef] as? String) == "S" ? -1.0 : 1.0
-        let longitudeSign = (gps[kCGImagePropertyGPSLongitudeRef] as? String) == "W" ? -1.0 : 1.0
-        return (latitude * latitudeSign, longitude * longitudeSign)
+        let latitudeSign = (gps[kCGImagePropertyGPSLatitudeRef] as? String)?.uppercased() == "S" ? -1.0 : 1.0
+        let longitudeSign = (gps[kCGImagePropertyGPSLongitudeRef] as? String)?.uppercased() == "W" ? -1.0 : 1.0
+        let signedLatitude = latitude * latitudeSign
+        let signedLongitude = longitude * longitudeSign
+
+        // Reject implausible fixes: out-of-range degrees, and the exact
+        // (0, 0) "null island" some cameras write when they had no GPS
+        // lock — otherwise we'd hunt for gas stations in the Atlantic.
+        guard abs(signedLatitude) <= 90,
+              abs(signedLongitude) <= 180,
+              !(signedLatitude == 0 && signedLongitude == 0) else {
+            return nil
+        }
+        return (signedLatitude, signedLongitude)
     }
 
     private static func recognizeText(in image: CGImage) -> [String] {
