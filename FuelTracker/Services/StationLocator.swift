@@ -51,12 +51,24 @@ final class StationLocator: NSObject {
             manager.requestLocation()
         }
 
-        let request = MKLocalPointsOfInterestRequest(center: location.coordinate, radius: 250)
+        return try await nearestStation(
+            latitude: location.coordinate.latitude,
+            longitude: location.coordinate.longitude
+        )
+    }
+
+    /// Nearest gas station to an arbitrary coordinate (e.g. from a photo's
+    /// GPS metadata). Pure MapKit search — needs no location permission.
+    func nearestStation(latitude: Double, longitude: Double) async throws -> DetectedStation {
+        let center = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        let reference = CLLocation(latitude: latitude, longitude: longitude)
+
+        let request = MKLocalPointsOfInterestRequest(center: center, radius: 300)
         request.pointOfInterestFilter = MKPointOfInterestFilter(including: [.gasStation])
         let response = try await MKLocalSearch(request: request).start()
 
         let nearest = response.mapItems.min { first, second in
-            distance(from: location, to: first) < distance(from: location, to: second)
+            distance(from: reference, to: first) < distance(from: reference, to: second)
         }
         guard let nearest, let name = nearest.name else {
             throw StationLocatorError.noStationNearby
