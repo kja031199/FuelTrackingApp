@@ -15,6 +15,7 @@ struct AddEditFillUpView: View {
     @State private var form: FillUpFormModel
     @State private var selectedVehicleID: UUID?
     @State private var showingScanner = false
+    @State private var showingOdometerScanner = false
     @State private var stationLocator = StationLocator()
     @State private var isLocatingStation = false
     @State private var stationHint: String?
@@ -80,9 +81,18 @@ struct AddEditFillUpView: View {
                     DatePicker("Date", selection: $form.date, displayedComponents: [.date, .hourAndMinute])
 
                     LabeledContent("Odometer") {
-                        TextField("miles", value: $form.odometer, format: .number)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
+                        HStack {
+                            TextField("miles", value: $form.odometer, format: .number)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                            Button {
+                                showingOdometerScanner = true
+                            } label: {
+                                Image(systemName: "camera.viewfinder")
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel("Scan odometer with the camera")
+                        }
                     }
 
                     LabeledContent("Gallons") {
@@ -174,6 +184,15 @@ struct AddEditFillUpView: View {
                     }
                 }
             }
+            .sheet(isPresented: $showingOdometerScanner) {
+                let context = odometerScanContext
+                OdometerScannerView(
+                    previousOdometer: context.previous,
+                    typicalMilesPerFill: context.typical
+                ) { value in
+                    form.odometer = value
+                }
+            }
             .onChange(of: photoItem) { _, newItem in
                 if let newItem {
                     importPhoto(newItem)
@@ -223,6 +242,27 @@ struct AddEditFillUpView: View {
                 form.pricePerGallon = price
                 summaryParts.append("\(Format.fuelPrice(price))/gal")
             }
+            // A dashboard photo can carry the odometer. Only a reading that
+            // validates against this vehicle's history is trusted enough to
+            // auto-fill; anything doubtful is left to the live scanner or
+            // manual entry.
+            if form.odometer == nil {
+                let claimed = [
+                    imported.reading.gallons,
+                    imported.reading.pricePerGallon,
+                    imported.reading.totalCost,
+                ].compactMap { $0 }
+                let context = odometerScanContext
+                if let candidate = OdometerScanParser.parse(
+                    imported.ocrLines,
+                    previousOdometer: context.previous,
+                    typicalMilesPerFill: context.typical,
+                    excluding: claimed
+                ), case .plausible = candidate.validation {
+                    form.odometer = candidate.value
+                    summaryParts.append("\(Format.odometer(candidate.value)) mi")
+                }
+            }
             if let capturedAt = imported.capturedAt {
                 form.date = capturedAt
                 summaryParts.append(capturedAt.formatted(date: .abbreviated, time: .shortened))
@@ -245,6 +285,14 @@ struct AddEditFillUpView: View {
                 importHint = "Couldn't read every pump number — fill in the rest manually."
             }
         }
+    }
+
+    /// History context for validating a scanned odometer: the vehicle's
+    /// highest recorded reading and its typical distance between fills.
+    private var odometerScanContext: (previous: Double?, typical: Double?) {
+        guard let vehicle = selectedVehicle else { return (nil, nil) }
+        let statistics = FuelStatistics(entries: vehicle.fillUps)
+        return (vehicle.fillUps.map(\.odometer).max(), statistics.averageMilesBetweenFillUps)
     }
 
     private func detectStation() {
