@@ -128,6 +128,8 @@ struct AddEditFillUpView: View {
                 Section {
                     Toggle("Filled the tank completely", isOn: $form.isFullTank)
 
+                    Toggle("Missed logging a fill before this", isOn: $form.missedPreviousFillUp)
+
                     Picker("Fuel Grade", selection: $form.fuelGrade) {
                         ForEach(FuelGrade.allCases) { grade in
                             Text(grade.rawValue).tag(grade)
@@ -159,7 +161,7 @@ struct AddEditFillUpView: View {
                         if let stationHint {
                             Label(stationHint, systemImage: "location.slash")
                         }
-                        Text("Marking full tanks lets the app calculate exact MPG between fills. Leave it off for partial fills — those gallons still count toward the next full-tank MPG.")
+                        Text("Marking full tanks lets the app calculate exact MPG between fills. Leave it off for partial fills — those gallons still count toward the next full-tank MPG. If you forgot to log a fill-up before this one, mark it so the impossible-looking MPG segment is excluded from your stats — the fuel still counts toward spending.")
                     }
                 }
             }

@@ -13,6 +13,9 @@ final class FuelEntry {
     var pricePerGallon: Double = 0
     /// A full tank lets the app compute exact MPG between fills.
     var isFullTank: Bool = true
+    /// Set when the user forgot to log a fill-up before this one: the MPG
+    /// chain restarts here instead of producing a bogus segment.
+    var missedPreviousFillUp: Bool = false
     var fuelGradeRaw: String = FuelGrade.regular.rawValue
     var station: String = ""
     var notes: String = ""
@@ -29,6 +32,7 @@ final class FuelEntry {
         gallons: Double,
         pricePerGallon: Double,
         isFullTank: Bool = true,
+        missedPreviousFillUp: Bool = false,
         fuelGrade: FuelGrade = .regular,
         station: String = "",
         notes: String = "",
@@ -42,6 +46,7 @@ final class FuelEntry {
         self.gallons = gallons
         self.pricePerGallon = pricePerGallon
         self.isFullTank = isFullTank
+        self.missedPreviousFillUp = missedPreviousFillUp
         self.fuelGradeRaw = fuelGrade.rawValue
         self.station = station
         self.notes = notes

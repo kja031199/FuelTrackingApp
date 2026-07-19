@@ -108,6 +108,18 @@ struct OdometerScanParserTests {
         #expect(candidate == nil)
     }
 
+    @Test func multiDecimalNumbersAreNeverCandidatesEvenWithoutExclusions() {
+        // Regression: "3.499" once split into "3.4" plus a phantom "99"
+        // that became a 99-mile odometer candidate. Two-plus decimals are
+        // pump formatting and must be consumed whole and discarded.
+        let candidate = OdometerScanParser.parse(
+            ["30.48", "8.712", "3.499"],
+            previousOdometer: nil,
+            typicalMilesPerFill: nil
+        )
+        #expect(candidate == nil)
+    }
+
     @Test func sevenDigitAndTinyNumbersAreOutOfRange() {
         #expect(OdometerScanParser.parse(
             ["1000000"], previousOdometer: nil, typicalMilesPerFill: nil

@@ -13,6 +13,9 @@ The odometer field has its own camera button: point it at your dashboard and OCR
 ### Import a pump photo taken earlier
 Took a photo at the pump to log later? Tap **Import Pump Photo** on the fill-up form and pick it: the same on-device OCR reads gallons and price off the display, the **date and time** come from the photo's EXIF metadata, and the **gas station** is looked up from the GPS coordinates embedded in the photo — no location permission needed, since the location comes from the photo itself. A dashboard photo fills the **odometer** the same way, but only when the reading validates against your vehicle's history — doubtful readings are never auto-filled. A summary line shows exactly what was imported; anything unreadable is left for manual entry.
 
+### Missed fill-up detection
+Forgot to log a fill? The next entry's MPG comes out impossibly high — and the app notices. Segments far above your vehicle's norm (or physically absurd outright) are flagged with a "Missed a fill?" badge in the history and a review banner on the dashboard. Mark **"Missed logging a fill before this"** on the entry and the bogus segment is excluded from your MPG stats while the fuel still counts toward spending. Detection is deliberately conservative: it compares against your median MPG and needs enough history before flagging anything relative — a hybrid's great highway tank won't get falsely accused.
+
 ### Automatic gas station detection
 The station field fills itself: with location access granted, a new fill-up looks up the nearest gas station (MapKit points of interest) and records its name and coordinates with the entry. A location button on the field lets you trigger or re-run detection; you can always type the name manually. Location is used once per fill-up, never tracked in the background.
 

@@ -257,6 +257,23 @@ struct AdversarialRenderingTests {
         render(ContentView(), container: container)
     }
 
+    @Test func dashboardRendersTheMissedFillUpBanner() {
+        // Segments of 30/31/32 MPG then an impossible 66 — the suspect
+        // banner path must render.
+        let (container, vehicle) = Scenario.vehicleOnly()
+        let odometers: [Double] = [10_000, 10_300, 10_610, 10_930, 11_590]
+        for (index, odometer) in odometers.enumerated() {
+            let date = Calendar.current.date(from: DateComponents(year: 2025, month: 1, day: 1 + index * 9))!
+            container.mainContext.insert(
+                FuelEntry(date: date, odometer: odometer, gallons: 10, pricePerGallon: 3.5, vehicle: vehicle)
+            )
+        }
+        render(
+            DashboardView(selectedVehicle: vehicle, vehicles: [vehicle], selectedVehicleID: .constant("")),
+            container: container
+        )
+    }
+
     @Test func lineChartRendersWithZeroAndOnePoint() {
         // The dashboard gates charts behind a two-point minimum, but the
         // component itself must tolerate less if a caller forgets.

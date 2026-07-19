@@ -121,10 +121,14 @@ enum OdometerScanParser {
     private static func extractNumbers(from line: String) -> [(value: Double, isInteger: Bool)] {
         var results: [(Double, Bool)] = []
         var remainder = Substring(line)
-        while let match = remainder.firstMatch(of: #/([0-9]+)(?:\.([0-9]))?/#) {
+        while let match = remainder.firstMatch(of: #/([0-9]+)(?:\.([0-9]+))?/#) {
             let integerPart = match.1
             if let fraction = match.2 {
-                if let value = Double("\(integerPart).\(fraction)") {
+                // Exactly one decimal is trip-meter style. Two or more is
+                // pump formatting (money, gallons) — never an odometer, and
+                // it must be consumed whole so its tail digits can't leak
+                // out as phantom integer candidates (the "3.499" → 99 bug).
+                if fraction.count == 1, let value = Double("\(integerPart).\(fraction)") {
                     results.append((value, false))
                 }
             } else if let value = Double(integerPart) {
