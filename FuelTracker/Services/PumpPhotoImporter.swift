@@ -10,6 +10,9 @@ struct PumpPhotoImport {
     var capturedAt: Date?
     var latitude: Double?
     var longitude: Double?
+    /// Raw OCR lines, so callers can run further extraction (e.g. the
+    /// odometer parser, which needs vehicle history this importer lacks).
+    var ocrLines: [String] = []
 
     var foundAnything: Bool {
         reading != PumpReading() || capturedAt != nil || latitude != nil
@@ -39,7 +42,8 @@ enum PumpPhotoImporter {
         }
 
         if let cgImage = CGImageSourceCreateImageAtIndex(source, 0, nil) {
-            result.reading = PumpScanParser.parse(recognizeText(in: cgImage))
+            result.ocrLines = recognizeText(in: cgImage)
+            result.reading = PumpScanParser.parse(result.ocrLines)
         }
 
         return result
