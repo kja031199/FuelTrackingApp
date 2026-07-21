@@ -50,6 +50,9 @@ struct FuelStatistics {
     /// MPG for a specific entry, if it completed a full-tank segment.
     private let mpgByEntryID: [UUID: Double]
 
+    /// Entry IDs whose segment MPG suggests an unlogged fill-up before them.
+    let suspectSegmentIDs: Set<UUID>
+
     init(entries: [FuelEntry]) {
         let sorted = entries.sorted { $0.odometer < $1.odometer }
         self.entries = sorted
@@ -61,6 +64,14 @@ struct FuelStatistics {
         var gallonsSinceBaseline = 0.0
 
         for entry in sorted {
+            if entry.missedPreviousFillUp {
+                // An unlogged fill sits before this entry, so no segment can
+                // end here — restart the chain instead. Its fuel still counts
+                // toward spending; it just can't produce an MPG.
+                baseline = entry.isFullTank ? entry : nil
+                gallonsSinceBaseline = 0
+                continue
+            }
             if let base = baseline {
                 gallonsSinceBaseline += entry.gallons
                 if entry.isFullTank {
@@ -87,6 +98,23 @@ struct FuelStatistics {
         }
         self.mpgPoints = points
         self.mpgByEntryID = byID
+
+        // Detect segments whose MPG is far beyond the vehicle's norm — the
+        // classic signature of an unlogged fill-up between two entries.
+        // Relative check needs enough history to know the norm; the absolute
+        // cap catches physical absurdity even without it.
+        var suspects: Set<UUID> = []
+        if points.count >= 3 {
+            let sortedMPGs = points.map(\.mpg).sorted()
+            let median = sortedMPGs[sortedMPGs.count / 2]
+            for point in points where point.mpg > median * 1.75 {
+                suspects.insert(point.id)
+            }
+        }
+        for point in points where point.mpg > 120 {
+            suspects.insert(point.id)
+        }
+        self.suspectSegmentIDs = suspects
 
         self.pricePoints = sorted.map {
             PricePoint(id: $0.id, date: $0.date, pricePerGallon: $0.pricePerGallon)
@@ -119,6 +147,27 @@ struct FuelStatistics {
 
     func mpg(for entry: FuelEntry) -> Double? {
         mpgByEntryID[entry.id]
+    }
+
+    /// True when this entry's segment looks like it followed an unlogged
+    /// fill-up (impossibly high MPG for this vehicle).
+    func isSuspectSegment(for entry: FuelEntry) -> Bool {
+        suspectSegmentIDs.contains(entry.id)
+    }
+
+    /// Entries with suspect segments, newest first — candidates for the
+    /// "missed fill-up" marker.
+    var suspectEntries: [FuelEntry] {
+        entries
+            .filter { suspectSegmentIDs.contains($0.id) }
+            .sorted { $0.date > $1.date }
+    }
+
+    /// Median MPG across segments; steadier than the mean for messaging.
+    var medianMPG: Double? {
+        guard !mpgPoints.isEmpty else { return nil }
+        let sorted = mpgPoints.map(\.mpg).sorted()
+        return sorted[sorted.count / 2]
     }
 
     // MARK: - Chart series

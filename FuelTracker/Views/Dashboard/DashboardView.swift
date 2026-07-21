@@ -28,6 +28,7 @@ struct DashboardView: View {
 
     @State private var timeRange: DashboardTimeRange = .all
     @State private var showingAddSheet = false
+    @State private var entryBeingReviewed: FuelEntry?
 
     private var filteredEntries: [FuelEntry] {
         let all = selectedVehicle?.fillUps ?? []
@@ -85,6 +86,9 @@ struct DashboardView: View {
             .sheet(isPresented: $showingAddSheet) {
                 AddEditFillUpView(defaultVehicle: selectedVehicle)
             }
+            .sheet(item: $entryBeingReviewed) { entry in
+                AddEditFillUpView(entry: entry)
+            }
         }
     }
 
@@ -97,6 +101,10 @@ struct DashboardView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+
+                if let suspect = statistics.suspectEntries.first {
+                    suspectBanner(for: suspect, statistics: statistics)
+                }
 
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                     ForEach(statistics.dashboardKPIs) { kpi in
@@ -161,6 +169,43 @@ struct DashboardView: View {
             .padding()
         }
         .background(Color(.systemGroupedBackground))
+    }
+
+    /// Nudge shown when a segment's MPG suggests an unlogged fill-up.
+    private func suspectBanner(for entry: FuelEntry, statistics: FuelStatistics) -> some View {
+        Button {
+            entryBeingReviewed = entry
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                Label("Possible missed fill-up", systemImage: "exclamationmark.triangle.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.orange)
+
+                Text(suspectMessage(for: entry, statistics: statistics))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+
+                Text("Review Entry")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tint)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func suspectMessage(for entry: FuelEntry, statistics: FuelStatistics) -> String {
+        let date = entry.date.formatted(date: .abbreviated, time: .omitted)
+        guard let mpg = statistics.mpg(for: entry) else {
+            return "The fill-up on \(date) produced an unusually high MPG. If you skipped logging a fill before it, mark it on the entry to keep your stats honest."
+        }
+        if let median = statistics.medianMPG {
+            return "The fill-up on \(date) computed \(Format.mpg(mpg)) MPG — far above your typical \(Format.mpg(median)). If you skipped logging a fill before it, mark it on the entry to keep your stats honest."
+        }
+        return "The fill-up on \(date) computed \(Format.mpg(mpg)) MPG, which looks physically impossible. If you skipped logging a fill before it, mark it on the entry to keep your stats honest."
     }
 
     private var mpgHint: some View {

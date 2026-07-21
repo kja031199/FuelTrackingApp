@@ -43,7 +43,11 @@ struct FillUpsListView: View {
                             Button {
                                 entryBeingEdited = entry
                             } label: {
-                                FillUpRow(entry: entry, mpg: statistics.mpg(for: entry))
+                                FillUpRow(
+                                    entry: entry,
+                                    mpg: statistics.mpg(for: entry),
+                                    isSuspect: statistics.isSuspectSegment(for: entry)
+                                )
                             }
                             .buttonStyle(.plain)
                         }
@@ -89,6 +93,7 @@ struct FillUpsListView: View {
 struct FillUpRow: View {
     let entry: FuelEntry
     let mpg: Double?
+    var isSuspect = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -119,6 +124,22 @@ struct FillUpRow: View {
                         .padding(.vertical, 3)
                         .background(.blue.opacity(0.15), in: Capsule())
                         .foregroundStyle(.blue)
+                }
+                if isSuspect {
+                    Label("Missed a fill?", systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(.orange.opacity(0.15), in: Capsule())
+                        .foregroundStyle(.orange)
+                }
+                if entry.missedPreviousFillUp {
+                    Text("Missed fill before")
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(.secondary.opacity(0.15), in: Capsule())
+                        .foregroundStyle(.secondary)
                 }
                 if !entry.isFullTank {
                     Text("Partial")

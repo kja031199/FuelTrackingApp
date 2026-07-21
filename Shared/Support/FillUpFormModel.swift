@@ -12,6 +12,7 @@ final class FillUpFormModel {
     var gallons: Double?
     var pricePerGallon: Double?
     var isFullTank = true
+    var missedPreviousFillUp = false
     var fuelGrade: FuelGrade = .regular
     var station = ""
     var notes = ""
@@ -30,6 +31,7 @@ final class FillUpFormModel {
         gallons = entry.gallons
         pricePerGallon = entry.pricePerGallon
         isFullTank = entry.isFullTank
+        missedPreviousFillUp = entry.missedPreviousFillUp
         fuelGrade = entry.fuelGrade
         station = entry.station
         notes = entry.notes
@@ -72,6 +74,7 @@ final class FillUpFormModel {
             entry.gallons = gallons
             entry.pricePerGallon = pricePerGallon
             entry.isFullTank = isFullTank
+            entry.missedPreviousFillUp = missedPreviousFillUp
             entry.fuelGrade = fuelGrade
             entry.station = station
             entry.notes = notes
@@ -84,6 +87,7 @@ final class FillUpFormModel {
                 gallons: gallons,
                 pricePerGallon: pricePerGallon,
                 isFullTank: isFullTank,
+                missedPreviousFillUp: missedPreviousFillUp,
                 fuelGrade: fuelGrade,
                 station: station,
                 notes: notes,
@@ -106,6 +110,7 @@ final class FillUpFormModel {
         gallons = nil
         pricePerGallon = nil
         isFullTank = true
+        missedPreviousFillUp = false
         station = ""
         notes = ""
         latitude = nil
