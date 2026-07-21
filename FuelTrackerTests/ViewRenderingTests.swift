@@ -274,6 +274,24 @@ struct AdversarialRenderingTests {
         )
     }
 
+    @Test func weekdayPriceChartRenders() {
+        let prices = [
+            WeekdayPrice(weekday: 3, symbol: "Tue", averagePrice: 3.20, fillUpCount: 4),
+            WeekdayPrice(weekday: 5, symbol: "Thu", averagePrice: 3.28, fillUpCount: 2),
+            WeekdayPrice(weekday: 6, symbol: "Fri", averagePrice: 3.31, fillUpCount: 3),
+        ]
+        render(WeekdayPriceChart(prices: prices, cheapestWeekday: 3), container: Scenario.empty())
+
+        // Degenerate: one weekday, and no cheapest to highlight.
+        render(
+            WeekdayPriceChart(
+                prices: [WeekdayPrice(weekday: 3, symbol: "Tue", averagePrice: 3.2, fillUpCount: 1)],
+                cheapestWeekday: nil
+            ),
+            container: Scenario.empty()
+        )
+    }
+
     @Test func lineChartRendersWithZeroAndOnePoint() {
         // The dashboard gates charts behind a two-point minimum, but the
         // component itself must tolerate less if a caller forgets.
