@@ -336,6 +336,31 @@ struct AdversarialRenderingTests {
     @Test func pumpScannerFallsBackGracefullyWithoutACamera() {
         // In the Simulator/test host there is no camera, so this executes
         // the ContentUnavailableView branch rather than live scanning.
-        render(PumpScannerView { _ in }, container: Scenario.empty())
+        render(PumpScannerView { _, _ in }, container: Scenario.empty())
+    }
+
+    @Test func receiptViewerRendersValidAndInvalidData() {
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 64, height: 96), format: format).image { ctx in
+            UIColor.gray.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 64, height: 96))
+        }
+        render(ReceiptViewer(imageData: image.jpegData(compressionQuality: 0.8)!), container: Scenario.empty())
+        // Unreadable data hits the ContentUnavailableView branch.
+        render(ReceiptViewer(imageData: Data([0, 1, 2, 3])), container: Scenario.empty())
+    }
+
+    @Test func fillUpFormRendersWithAReceiptAttached() {
+        let (container, vehicle) = Scenario.populated()
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 40, height: 40), format: format).image { ctx in
+            UIColor.gray.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 40, height: 40))
+        }
+        let entry = vehicle.fillUps.first!
+        entry.receiptImageData = image.jpegData(compressionQuality: 0.8)
+        render(AddEditFillUpView(entry: entry), container: container)
     }
 }

@@ -7,6 +7,9 @@ A native iPhone app for tracking gas fill-ups and fuel economy, inspired by Fuel
 ### Scan the pump with your camera
 Tap **Scan Pump Display** on the fill-up form and point your camera at the pump: live on-device text recognition (VisionKit) reads the gallons, price per gallon, and total straight off the display and fills the form. The parser cross-checks the numbers (gallons × price ≈ total) so it can identify the values even on pumps with unusual layouts — and it refuses to guess when the reading is ambiguous. Nothing leaves your phone. (Requires a real device; the Simulator has no camera.)
 
+### Receipt vault
+Every fill-up can keep its photo. When you scan the pump or import a pump photo, the image is **attached to the entry automatically** instead of being discarded after the numbers are read — and you can attach any receipt photo manually. Tap the thumbnail to view it full-screen (pinch to zoom) or share it for an expense report or warranty claim; a paperclip marks entries that have one in the history list. Photos are downsized before storage so they stay light in the on-device store and in iCloud sync.
+
 ### Scan your odometer too
 The odometer field has its own camera button: point it at your dashboard and OCR picks the odometer out of the instrument-cluster clutter — the clock, temperature, trip meter, and speedometer are recognized and ignored. Every reading is **validated against your history**: a value below your last reading or implausibly far beyond your typical tank distance is flagged with a warning before you accept it, so a misread gets caught instead of saved. Combined with pump scanning, a fill-up is two photos and zero typing.
 

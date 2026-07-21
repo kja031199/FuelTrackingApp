@@ -3,18 +3,34 @@ import VisionKit
 
 /// Live camera scanner that reads gallons, price per gallon, and total
 /// straight off the gas pump display. All recognition is on-device.
+/// Holds a weak reference to the live scanner so the accept action can grab
+/// a still frame to keep as the fill-up's receipt.
+final class ScannerCaptureHandle {
+    weak var scanner: DataScannerViewController?
+
+    func capturePhotoData() async -> Data? {
+        guard let scanner else { return nil }
+        guard let image = try? await scanner.capturePhoto() else { return nil }
+        return ReceiptImage.compressed(from: image)
+    }
+}
+
 struct PumpScannerView: View {
     @Environment(\.dismiss) private var dismiss
-    let onAccept: (PumpReading) -> Void
+    /// Delivers the parsed reading and, when available, a still photo of the
+    /// pump to keep as the receipt.
+    let onAccept: (PumpReading, Data?) -> Void
 
     @State private var reading = PumpReading()
+    @State private var isCapturing = false
+    private let captureHandle = ScannerCaptureHandle()
 
     var body: some View {
         NavigationStack {
             Group {
                 if DataScannerViewController.isSupported && DataScannerViewController.isAvailable {
                     ZStack(alignment: .bottom) {
-                        PumpDataScanner(reading: $reading)
+                        PumpDataScanner(reading: $reading, captureHandle: captureHandle)
                             .ignoresSafeArea()
                         readingBar
                     }
@@ -49,18 +65,29 @@ struct PumpScannerView: View {
             }
 
             Button {
-                onAccept(reading)
-                dismiss()
+                capture()
             } label: {
-                Label("Use These Values", systemImage: "checkmark.circle.fill")
+                Label(isCapturing ? "Saving…" : "Use These Values", systemImage: "checkmark.circle.fill")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(!reading.isComplete)
+            .disabled(!reading.isComplete || isCapturing)
         }
         .padding()
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
         .padding()
+    }
+
+    /// Grabs a still of the pump (best-effort) and hands both the reading and
+    /// the photo back before dismissing.
+    private func capture() {
+        guard !isCapturing else { return }
+        isCapturing = true
+        Task {
+            let photo = await captureHandle.capturePhotoData()
+            onAccept(reading, photo)
+            dismiss()
+        }
     }
 
     private func readingChip(_ title: String, _ value: String?) -> some View {
@@ -81,6 +108,7 @@ struct PumpScannerView: View {
 
 private struct PumpDataScanner: UIViewControllerRepresentable {
     @Binding var reading: PumpReading
+    let captureHandle: ScannerCaptureHandle
 
     func makeUIViewController(context: Context) -> DataScannerViewController {
         let scanner = DataScannerViewController(
@@ -90,10 +118,12 @@ private struct PumpDataScanner: UIViewControllerRepresentable {
             isHighlightingEnabled: true
         )
         scanner.delegate = context.coordinator
+        captureHandle.scanner = scanner
         return scanner
     }
 
     func updateUIViewController(_ scanner: DataScannerViewController, context: Context) {
+        captureHandle.scanner = scanner
         if !scanner.isScanning {
             try? scanner.startScanning()
         }

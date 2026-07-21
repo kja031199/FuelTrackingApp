@@ -22,6 +22,10 @@ final class FuelEntry {
     /// Where the fill-up happened, when detected via location services.
     var latitude: Double?
     var longitude: Double?
+    /// The pump or receipt photo, kept as a permanent record of the fill-up.
+    /// Stored outside the main store (and CloudKit record) so large images
+    /// don't bloat every row.
+    @Attribute(.externalStorage) var receiptImageData: Data?
 
     var vehicle: Vehicle?
 
@@ -38,6 +42,7 @@ final class FuelEntry {
         notes: String = "",
         latitude: Double? = nil,
         longitude: Double? = nil,
+        receiptImageData: Data? = nil,
         vehicle: Vehicle? = nil
     ) {
         self.id = id
@@ -52,6 +57,7 @@ final class FuelEntry {
         self.notes = notes
         self.latitude = latitude
         self.longitude = longitude
+        self.receiptImageData = receiptImageData
         self.vehicle = vehicle
     }
 
@@ -62,5 +68,9 @@ final class FuelEntry {
 
     var totalCost: Double {
         gallons * pricePerGallon
+    }
+
+    var hasReceipt: Bool {
+        receiptImageData != nil
     }
 }
