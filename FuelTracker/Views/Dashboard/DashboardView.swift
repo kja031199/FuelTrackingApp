@@ -136,6 +136,10 @@ struct DashboardView: View {
                     }
                 }
 
+                if statistics.weekdayPrices.count >= 2 {
+                    weekdayPriceCard(statistics)
+                }
+
                 if statistics.odometerPoints.count >= 2 {
                     ChartCard(title: "Odometer", subtitle: "Mileage recorded at each fill-up") {
                         MetricLineChart(
@@ -169,6 +173,36 @@ struct DashboardView: View {
             .padding()
         }
         .background(Color(.systemGroupedBackground))
+    }
+
+    /// "Price by Day" card: the weekday insight headline above a dot plot of
+    /// average price per gallon by weekday. Its own layout (rather than the
+    /// fixed-height ChartCard) so the headline and chart both get room.
+    private func weekdayPriceCard(_ statistics: FuelStatistics) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Price by Day")
+                    .font(.headline)
+                Text("Average price per gallon by weekday")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let insight = statistics.weekdayPriceInsight {
+                Label(insight, systemImage: "calendar.badge.clock")
+                    .font(.caption)
+                    .foregroundStyle(.tint)
+            }
+
+            WeekdayPriceChart(
+                prices: statistics.weekdayPrices,
+                cheapestWeekday: statistics.cheapestWeekday?.weekday
+            )
+            .frame(height: 180)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
     }
 
     /// Nudge shown when a segment's MPG suggests an unlogged fill-up.
