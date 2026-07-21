@@ -18,6 +18,7 @@ final class FillUpFormModel {
     var notes = ""
     var latitude: Double?
     var longitude: Double?
+    var receiptImageData: Data?
 
     /// Entry being edited, or nil when creating a new one.
     private(set) var editedEntry: FuelEntry?
@@ -37,6 +38,7 @@ final class FillUpFormModel {
         notes = entry.notes
         latitude = entry.latitude
         longitude = entry.longitude
+        receiptImageData = entry.receiptImageData
     }
 
     var isEditing: Bool {
@@ -80,6 +82,7 @@ final class FillUpFormModel {
             entry.notes = notes
             entry.latitude = latitude
             entry.longitude = longitude
+            entry.receiptImageData = receiptImageData
         } else {
             let entry = FuelEntry(
                 date: date,
@@ -93,6 +96,7 @@ final class FillUpFormModel {
                 notes: notes,
                 latitude: latitude,
                 longitude: longitude,
+                receiptImageData: receiptImageData,
                 vehicle: vehicle
             )
             context.insert(entry)
@@ -115,6 +119,7 @@ final class FillUpFormModel {
         notes = ""
         latitude = nil
         longitude = nil
+        receiptImageData = nil
         // Detach from the previously saved entry so the next save inserts.
         editedEntry = nil
     }

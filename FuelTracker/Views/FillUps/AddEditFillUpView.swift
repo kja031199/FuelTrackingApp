@@ -1,6 +1,7 @@
 import PhotosUI
 import SwiftUI
 import SwiftData
+import UIKit
 
 /// Form for logging a new fill-up or editing an existing one.
 /// Field state and validation live in the shared FillUpFormModel;
@@ -23,6 +24,8 @@ struct AddEditFillUpView: View {
     @State private var isImportingPhoto = false
     @State private var importSummary: String?
     @State private var importHint: String?
+    @State private var receiptItem: PhotosPickerItem?
+    @State private var showingReceiptViewer = false
 
     init(entry: FuelEntry? = nil, defaultVehicle: Vehicle? = nil) {
         self.defaultVehicle = entry?.vehicle ?? defaultVehicle
@@ -164,6 +167,14 @@ struct AddEditFillUpView: View {
                         Text("Marking full tanks lets the app calculate exact MPG between fills. Leave it off for partial fills — those gallons still count toward the next full-tank MPG. If you forgot to log a fill-up before this one, mark it so the impossible-looking MPG segment is excluded from your stats — the fuel still counts toward spending.")
                     }
                 }
+
+                Section {
+                    receiptRow
+                } header: {
+                    Text("Receipt")
+                } footer: {
+                    Text("Keep the pump or receipt photo with this fill-up — a permanent record for warranties, expenses, or settling arguments. Scanned and imported pump photos are attached automatically.")
+                }
             }
             .navigationTitle(form.isEditing ? "Edit Fill-Up" : "New Fill-Up")
             .navigationBarTitleDisplayMode(.inline)
@@ -177,12 +188,15 @@ struct AddEditFillUpView: View {
                 }
             }
             .sheet(isPresented: $showingScanner) {
-                PumpScannerView { reading in
+                PumpScannerView { reading, photoData in
                     if let gallons = reading.gallons {
                         form.gallons = gallons
                     }
                     if let price = reading.pricePerGallon {
                         form.pricePerGallon = price
+                    }
+                    if let photoData {
+                        form.receiptImageData = photoData
                     }
                 }
             }
@@ -200,6 +214,16 @@ struct AddEditFillUpView: View {
                     importPhoto(newItem)
                 }
             }
+            .onChange(of: receiptItem) { _, newItem in
+                if let newItem {
+                    attachReceipt(newItem)
+                }
+            }
+            .sheet(isPresented: $showingReceiptViewer) {
+                if let data = form.receiptImageData {
+                    ReceiptViewer(imageData: data)
+                }
+            }
             .onAppear {
                 if selectedVehicleID == nil {
                     selectedVehicleID = defaultVehicle?.id ?? vehicles.first?.id
@@ -209,6 +233,53 @@ struct AddEditFillUpView: View {
                 if !form.isEditing, form.station.isEmpty, stationLocator.isAuthorized {
                     detectStation()
                 }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var receiptRow: some View {
+        if let data = form.receiptImageData, let uiImage = UIImage(data: data) {
+            Button {
+                showingReceiptViewer = true
+            } label: {
+                HStack(spacing: 12) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 52, height: 52)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Receipt attached")
+                        Text("Tap to view full screen")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .buttonStyle(.plain)
+
+            Button(role: .destructive) {
+                form.receiptImageData = nil
+            } label: {
+                Label("Remove Receipt", systemImage: "trash")
+            }
+        } else {
+            PhotosPicker(selection: $receiptItem, matching: .images) {
+                Label("Attach Receipt Photo", systemImage: "paperclip")
+            }
+        }
+    }
+
+    private func attachReceipt(_ item: PhotosPickerItem) {
+        Task {
+            defer { receiptItem = nil }
+            if let data = try? await item.loadTransferable(type: Data.self) {
+                form.receiptImageData = ReceiptImage.compressed(from: data) ?? data
             }
         }
     }
@@ -227,6 +298,10 @@ struct AddEditFillUpView: View {
                 importHint = "Couldn't load that photo — try picking it again."
                 return
             }
+
+            // Keep the photo with the fill-up rather than discarding it after
+            // parsing — an imported pump photo is a receipt worth saving.
+            form.receiptImageData = ReceiptImage.compressed(from: data) ?? data
 
             let imported = await PumpPhotoImporter.process(data: data)
             guard imported.foundAnything else {

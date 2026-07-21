@@ -155,6 +155,12 @@ struct FillUpRow: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
+                if entry.hasReceipt {
+                    Image(systemName: "paperclip")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("Has a receipt photo")
+                }
             }
         }
         .padding(.vertical, 2)
