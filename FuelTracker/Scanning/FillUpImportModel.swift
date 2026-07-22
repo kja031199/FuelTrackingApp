@@ -1,6 +1,13 @@
 import Foundation
 import Observation
 
+/// The result of applying an import to a form: a confirmation line and an
+/// optional recoverable hint. A single shape shared by every import path.
+struct ImportOutcome: Equatable {
+    var summary: String?
+    var hint: String?
+}
+
 /// Orchestrates the ways a fill-up can be populated from a photo — importing a
 /// pump photo, scanning a receipt, attaching a receipt image, and looking up
 /// the station — and maps the results onto a ``FillUpFormModel``.
@@ -130,11 +137,6 @@ final class FillUpImportModel {
 
     // MARK: - Pure result → form mapping (unit-tested)
 
-    struct Outcome: Equatable {
-        var summary: String?
-        var hint: String?
-    }
-
     /// Applies a pump-photo import onto the form and returns the confirmation
     /// text. `resolvedStation` is the station already looked up from the
     /// photo's coordinates (nil if none), kept out of here so MapKit stays at
@@ -145,7 +147,7 @@ final class FillUpImportModel {
         previousOdometer: Double?,
         typicalMilesPerFill: Double?,
         resolvedStation: DetectedStation?
-    ) -> Outcome {
+    ) -> ImportOutcome {
         var parts: [String] = []
 
         if let gallons = imported.reading.gallons {
@@ -190,7 +192,7 @@ final class FillUpImportModel {
         )
 
         let hint = missingNumberHint(imported.reading, message: "Couldn't read every pump number — fill in the rest manually.")
-        return Outcome(summary: parts.isEmpty ? nil : "Imported: " + parts.joined(separator: " · "), hint: hint)
+        return ImportOutcome(summary: parts.isEmpty ? nil : "Imported: " + parts.joined(separator: " · "), hint: hint)
     }
 
     /// Applies a receipt import onto the form and returns the confirmation
@@ -199,7 +201,7 @@ final class FillUpImportModel {
         _ imported: ReceiptPhotoImport,
         to form: FillUpFormModel,
         resolvedStation: DetectedStation?
-    ) -> Outcome {
+    ) -> ImportOutcome {
         var parts: [String] = []
 
         if let gallons = imported.reading.gallons {
@@ -233,7 +235,7 @@ final class FillUpImportModel {
         let summary = parts.isEmpty
             ? "Receipt attached — fill in the details manually."
             : "Imported: " + parts.joined(separator: " · ")
-        return Outcome(summary: summary, hint: hint)
+        return ImportOutcome(summary: summary, hint: hint)
     }
 
     /// Records coordinates on the form, preferring an already-named station
