@@ -108,4 +108,28 @@ struct ReceiptPhotoImporterTests {
         #expect(!imported.foundAnything)
         #expect(imported.ocrLines.isEmpty)
     }
+
+    // MARK: - reading(from:) — receipt fields from already-OCR'd text, no image
+
+    @Test func readingFromDerivesReceiptFieldsWithoutASecondOCRPass() throws {
+        // Feeding recognized lines directly lets us test the receipt parsing
+        // (station, printed date, numbers) with no image or Vision at all.
+        let captured = Calendar.current.date(from: DateComponents(year: 2026, month: 8, day: 1))!
+        let pump = PumpPhotoImport(
+            reading: PumpReading(gallons: 8.712, pricePerGallon: 3.499),
+            capturedAt: captured, latitude: 37.0, longitude: -122.0,
+            ocrLines: ["SHELL", "07/19/2026", "GALLONS 8.712", "PRICE/GAL 3.499"]
+        )
+        let receipt = ReceiptPhotoImporter.reading(from: pump)
+
+        #expect(receipt.stationName == "Shell")
+        #expect(receipt.reading.gallons == 8.712)
+        #expect(receipt.reading.pricePerGallon == 3.499)
+        #expect(receipt.latitude == 37.0)
+        #expect(receipt.capturedAt == captured)
+
+        let purchase = try #require(receipt.purchaseDate)
+        let ymd = Calendar.current.dateComponents([.year, .month, .day], from: purchase)
+        #expect(ymd.year == 2026 && ymd.month == 7 && ymd.day == 19)
+    }
 }

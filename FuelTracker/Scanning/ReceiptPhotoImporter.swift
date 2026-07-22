@@ -32,7 +32,13 @@ struct ReceiptPhotoImport {
 /// the printed date, and the station brand.
 enum ReceiptPhotoImporter {
     static func process(data: Data) async -> ReceiptPhotoImport {
-        let pump = await PumpPhotoImporter.process(data: data)
+        reading(from: await PumpPhotoImporter.process(data: data))
+    }
+
+    /// Derives the receipt fields from an already-OCR'd pump import — no second
+    /// OCR pass. Lets a caller run OCR once and interpret the same text as
+    /// either a pump display or a receipt.
+    static func reading(from pump: PumpPhotoImport) -> ReceiptPhotoImport {
         // The photo's capture date is the best reference for resolving a
         // two-digit year and for rejecting an impossible future date.
         let receipt = ReceiptScanParser.parse(pump.ocrLines, referenceDate: pump.capturedAt ?? .now)
