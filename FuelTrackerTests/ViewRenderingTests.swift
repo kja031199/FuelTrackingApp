@@ -168,6 +168,72 @@ struct ScreenRenderingTests {
             container: container
         )
     }
+
+    /// Inserts a vehicle with `count` deterministic fill-ups climbing at a
+    /// fixed miles-per-gallon so the showdown has real MPG/cost data.
+    @MainActor
+    private func vehicle(
+        named name: String,
+        in container: ModelContainer,
+        fills count: Int,
+        milesPerFill: Double,
+        price: Double
+    ) -> Vehicle {
+        let vehicle = Vehicle(name: name)
+        container.mainContext.insert(vehicle)
+        var odometer = 10_000.0
+        for index in 0..<count {
+            let date = Calendar.current.date(from: DateComponents(year: 2025, month: 1, day: 1 + index * 7))!
+            odometer += index == 0 ? 0 : milesPerFill
+            container.mainContext.insert(
+                FuelEntry(date: date, odometer: odometer, gallons: 10, pricePerGallon: price, vehicle: vehicle)
+            )
+        }
+        return vehicle
+    }
+
+    @Test func showdownWithTwoDataRichVehicles() {
+        // Two vehicles with distinct economy/price so the verdict, the
+        // highlighted winners, and the overlaid MPG chart all render.
+        let container = ModelContainerFactory.makeInMemory()
+        let efficient = vehicle(named: "Prius", in: container, fills: 4, milesPerFill: 400, price: 3.6)
+        let thirsty = vehicle(named: "Truck", in: container, fills: 4, milesPerFill: 250, price: 2.9)
+        render(ShowdownView(vehicles: [efficient, thirsty]), container: container)
+    }
+
+    @Test func showdownWithThreeVehiclesShowsPickers() {
+        // A third vehicle switches on the left/right pickers branch.
+        let container = ModelContainerFactory.makeInMemory()
+        let a = vehicle(named: "Car A", in: container, fills: 3, milesPerFill: 350, price: 3.1)
+        let b = vehicle(named: "Car B", in: container, fills: 3, milesPerFill: 300, price: 3.4)
+        let c = vehicle(named: "Car C", in: container, fills: 3, milesPerFill: 280, price: 3.0)
+        render(ShowdownView(vehicles: [a, b, c]), container: container)
+    }
+
+    @Test func showdownWithEmptyVehiclesHitsNoContestVerdict() {
+        // Two vehicles with no fill-ups: every row is "—", no MPG chart, and
+        // the verdict falls to the "not enough data" branch.
+        let container = ModelContainerFactory.makeInMemory()
+        let a = Vehicle(name: "Fresh A")
+        let b = Vehicle(name: "Fresh B")
+        container.mainContext.insert(a)
+        container.mainContext.insert(b)
+        render(ShowdownView(vehicles: [a, b]), container: container)
+    }
+
+    @Test func showdownWithNoVehiclesHitsPlaceholder() {
+        // With nothing to select, neither side resolves and the
+        // "Pick Two Vehicles" ContentUnavailableView branch renders.
+        render(ShowdownView(vehicles: []), container: Scenario.empty())
+    }
+
+    @Test func showdownComparingAVehicleToItselfTiesEverything() {
+        // A single vehicle: onAppear points both sides at it, so every
+        // contested row ties and the "too close to call" verdict renders.
+        let container = ModelContainerFactory.makeInMemory()
+        let solo = vehicle(named: "Solo", in: container, fills: 3, milesPerFill: 300, price: 3.2)
+        render(ShowdownView(vehicles: [solo]), container: container)
+    }
 }
 
 // MARK: - Components

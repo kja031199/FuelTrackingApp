@@ -56,6 +56,9 @@ Charts (tap or drag the line charts to inspect a point):
 ### Vehicles
 Track multiple vehicles, each with its own history and dashboard. Switch vehicles from the toolbar on the Dashboard and Fill-Ups tabs.
 
+### Head-to-head vehicle showdown
+Once you're tracking two or more vehicles, a **Compare** button appears on the Vehicles tab. It puts two cars side by side: a verdict line ("Prius leads 2–1"), a metric table with the winner of each contested row highlighted — average MPG, cost per mile, and average price per gallon — plus informational rows for miles tracked, total spent, and fill-up count. Their MPG trends are overlaid on a single chart so you can see which one is pulling ahead over time. Great for settling "should we take my car or yours?" and for sizing up a car you're thinking of buying. With three or more vehicles, pickers let you choose which two to pit against each other. Rows with data on only one side (or informational rows) never declare a winner, so a brand-new vehicle can't fake a lead.
+
 ### Apple Watch app
 A companion watchOS app for logging fill-ups from your wrist. The main screen is a quick-entry form (odometer, gallons, price per gallon, live auto-calculated total, full-tank toggle); scroll down for compact KPIs (avg/last MPG, total spent, cost per mile, avg price per gallon, miles tracked) and mini charts (MPG trend, gas price, monthly spend). Data syncs with the iPhone app through iCloud, and the watch app can also run standalone.
 
@@ -102,6 +105,7 @@ Shared/                           # Compiled into both apps — single source of
 ├── Models/                       # SwiftData models (Vehicle, FuelEntry, FuelGrade)
 ├── Statistics/
 │   ├── FuelStatistics.swift      # All KPI & chart math (MPG segments, monthly rollups)
+│   ├── VehicleShowdown.swift     # Head-to-head two-vehicle comparison model
 │   └── KPI.swift                 # Formatted KPI definitions for both dashboards
 ├── Views/
 │   └── MetricCharts.swift        # Generic line/bar chart components (full & compact modes)

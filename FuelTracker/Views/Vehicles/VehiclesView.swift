@@ -8,6 +8,7 @@ struct VehiclesView: View {
 
     @State private var showingAddSheet = false
     @State private var vehicleBeingEdited: Vehicle?
+    @State private var showingShowdown = false
 
     var body: some View {
         NavigationStack {
@@ -37,6 +38,15 @@ struct VehiclesView: View {
             }
             .navigationTitle("Vehicles")
             .toolbar {
+                if vehicles.count >= 2 {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            showingShowdown = true
+                        } label: {
+                            Label("Compare", systemImage: "car.2")
+                        }
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showingAddSheet = true
@@ -50,6 +60,9 @@ struct VehiclesView: View {
             }
             .sheet(item: $vehicleBeingEdited) { vehicle in
                 AddEditVehicleView(vehicle: vehicle)
+            }
+            .sheet(isPresented: $showingShowdown) {
+                ShowdownView(vehicles: vehicles)
             }
         }
     }
