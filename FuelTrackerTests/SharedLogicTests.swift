@@ -44,6 +44,16 @@ struct VehicleTests {
         #expect(vehicle.displaySubtitle.isEmpty)
     }
 
+    @Test func displaySubtitleWithOnlyMakeOmitsTheModel() {
+        let vehicle = Vehicle(name: "Daily", make: "Honda", year: 2021)
+        #expect(vehicle.displaySubtitle == "2021 Honda")
+    }
+
+    @Test func displaySubtitleWithOnlyModelOmitsTheMake() {
+        let vehicle = Vehicle(name: "Daily", model: "Civic", year: 2021)
+        #expect(vehicle.displaySubtitle == "2021 Civic")
+    }
+
     @Test func fillUpsFallsBackToEmptyWhenRelationshipIsNil() {
         let container = makeContainer()
         let vehicle = Vehicle(name: "Daily")
