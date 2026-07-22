@@ -26,6 +26,13 @@ enum PumpScanParser {
     private static let priceRange = 1.5...9.999
     private static let totalRange = 1.0...500.0
 
+    /// Upper bound on the values fed to the O(n³) consistency search. A real
+    /// pump or receipt shows a handful of numbers; a crafted, number-dense
+    /// image could yield hundreds, turning the cubic scan into a UI-freezing
+    /// denial of service. Real fills stay well under this, so accuracy is
+    /// unaffected while the worst case is bounded (40³ ≈ 64k iterations).
+    private static let maxTripleCandidates = 40
+
     private enum Label {
         case gallons, price, total
     }
@@ -125,10 +132,16 @@ enum PumpScanParser {
     private static func applyConsistentTriple(_ values: [Double], into reading: inout PumpReading) {
         guard !reading.isComplete || reading.totalCost == nil else { return }
 
+        // Only in-range values can form a valid triple; keeping just those and
+        // capping the count bounds this cubic search against a number-flood DoS.
+        let pool = values
+            .filter { totalRange.contains($0) || gallonsRange.contains($0) || priceRange.contains($0) }
+            .prefix(maxTripleCandidates)
+
         var best: (gallons: Double, price: Double, total: Double, error: Double)?
-        for (i, total) in values.enumerated() where totalRange.contains(total) {
-            for (j, gallons) in values.enumerated() where j != i && gallonsRange.contains(gallons) {
-                for (k, price) in values.enumerated() where k != i && k != j && priceRange.contains(price) {
+        for (i, total) in pool.enumerated() where totalRange.contains(total) {
+            for (j, gallons) in pool.enumerated() where j != i && gallonsRange.contains(gallons) {
+                for (k, price) in pool.enumerated() where k != i && k != j && priceRange.contains(price) {
                     let error = abs(gallons * price - total)
                     let tolerance = max(0.05, total * 0.01)
                     if error <= tolerance, error < (best?.error ?? .infinity) {

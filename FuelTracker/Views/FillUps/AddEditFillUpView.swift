@@ -296,8 +296,9 @@ struct AddEditFillUpView: View {
     private func attachReceipt(_ item: PhotosPickerItem) {
         Task {
             defer { receiptItem = nil }
-            if let data = try? await item.loadTransferable(type: Data.self) {
-                form.receiptImageData = ReceiptImage.compressed(from: data) ?? data
+            if let data = try? await item.loadTransferable(type: Data.self),
+               let compressed = ReceiptImage.compressed(from: data) {
+                form.receiptImageData = compressed
             }
         }
     }
@@ -318,8 +319,10 @@ struct AddEditFillUpView: View {
             }
 
             // Keep the photo with the fill-up rather than discarding it after
-            // parsing — an imported pump photo is a receipt worth saving.
-            form.receiptImageData = ReceiptImage.compressed(from: data) ?? data
+            // parsing — an imported pump photo is a receipt worth saving. Store
+            // only the re-encoded, size-bounded image; never the raw bytes,
+            // which could be an unbounded/undecodable payload.
+            form.receiptImageData = ReceiptImage.compressed(from: data)
 
             let imported = await PumpPhotoImporter.process(data: data)
             guard imported.foundAnything else {
@@ -397,8 +400,9 @@ struct AddEditFillUpView: View {
                 return
             }
 
-            // The receipt photo is itself the record worth keeping.
-            form.receiptImageData = ReceiptImage.compressed(from: data) ?? data
+            // The receipt photo is itself the record worth keeping. Store only
+            // the re-encoded, size-bounded image, never the raw bytes.
+            form.receiptImageData = ReceiptImage.compressed(from: data)
 
             let imported = await ReceiptPhotoImporter.process(data: data)
             guard imported.foundAnything else {
