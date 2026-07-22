@@ -48,6 +48,7 @@ struct ReceiptViewer: View {
                         ShareLink(item: Image(uiImage: image), preview: SharePreview("Receipt", image: Image(uiImage: image))) {
                             Image(systemName: "square.and.arrow.up")
                         }
+                        .accessibilityLabel("Share receipt")
                     }
                 }
             }

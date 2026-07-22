@@ -9,6 +9,7 @@ import UIKit
 struct AddEditFillUpView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @Query(sort: \Vehicle.createdAt) private var vehicles: [Vehicle]
 
@@ -258,7 +259,7 @@ struct AddEditFillUpView: View {
     private func highlightBackground(for field: ImportOutcome.Field) -> some View {
         let isOn = importer.highlightedFields.contains(field)
         return (isOn ? Color.accentColor.opacity(0.15) : Color(.secondarySystemGroupedBackground))
-            .animation(.easeInOut(duration: 0.35), value: importer.highlightedFields)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.35), value: importer.highlightedFields)
     }
 
     @ViewBuilder
