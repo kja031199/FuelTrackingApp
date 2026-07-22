@@ -22,6 +22,8 @@ struct AddEditFillUpView: View {
     @State private var stationHint: String?
     @State private var photoItem: PhotosPickerItem?
     @State private var isImportingPhoto = false
+    @State private var receiptScanItem: PhotosPickerItem?
+    @State private var isScanningReceipt = false
     @State private var importSummary: String?
     @State private var importHint: String?
     @State private var receiptItem: PhotosPickerItem?
@@ -66,6 +68,17 @@ struct AddEditFillUpView: View {
                         }
                     }
                     .disabled(isImportingPhoto)
+
+                    PhotosPicker(selection: $receiptScanItem, matching: .images) {
+                        HStack {
+                            Label("Scan Receipt", systemImage: "doc.text.viewfinder")
+                            Spacer()
+                            if isScanningReceipt {
+                                ProgressView()
+                            }
+                        }
+                    }
+                    .disabled(isScanningReceipt)
                 } footer: {
                     VStack(alignment: .leading, spacing: 6) {
                         if let importSummary {
@@ -76,7 +89,7 @@ struct AddEditFillUpView: View {
                             Label(importHint, systemImage: "exclamationmark.circle")
                                 .foregroundStyle(.orange)
                         }
-                        Text("Scan live at the pump, or pick a photo you took earlier — gallons and price are read from the display, and the date, time, and gas station come from the photo itself. Everything happens on your device.")
+                        Text("Scan live at the pump, or pick a photo you took earlier — gallons and price are read from the display, and the date, time, and gas station come from the photo itself. Snap a paper receipt instead and it reads the fuel amount plus the printed date and station. Everything happens on your device.")
                     }
                 }
 
@@ -212,6 +225,11 @@ struct AddEditFillUpView: View {
             .onChange(of: photoItem) { _, newItem in
                 if let newItem {
                     importPhoto(newItem)
+                }
+            }
+            .onChange(of: receiptScanItem) { _, newItem in
+                if let newItem {
+                    scanReceipt(newItem)
                 }
             }
             .onChange(of: receiptItem) { _, newItem in
@@ -360,6 +378,74 @@ struct AddEditFillUpView: View {
             importSummary = "Imported: " + summaryParts.joined(separator: " · ")
             if imported.reading.gallons == nil || imported.reading.pricePerGallon == nil {
                 importHint = "Couldn't read every pump number — fill in the rest manually."
+            }
+        }
+    }
+
+    private func scanReceipt(_ item: PhotosPickerItem) {
+        isScanningReceipt = true
+        importSummary = nil
+        importHint = nil
+        Task {
+            defer {
+                isScanningReceipt = false
+                receiptScanItem = nil
+            }
+
+            guard let data = try? await item.loadTransferable(type: Data.self) else {
+                importHint = "Couldn't load that photo — try picking it again."
+                return
+            }
+
+            // The receipt photo is itself the record worth keeping.
+            form.receiptImageData = ReceiptImage.compressed(from: data) ?? data
+
+            let imported = await ReceiptPhotoImporter.process(data: data)
+            guard imported.foundAnything else {
+                importHint = "Couldn't read this receipt. A flat, well-lit photo of the whole receipt works best."
+                return
+            }
+
+            var summaryParts: [String] = []
+
+            if let gallons = imported.reading.gallons {
+                form.gallons = gallons
+                summaryParts.append("\(Format.gallons(gallons)) gal")
+            }
+            if let price = imported.reading.pricePerGallon {
+                form.pricePerGallon = price
+                summaryParts.append("\(Format.fuelPrice(price))/gal")
+            }
+            // The date printed on the receipt is the real purchase date; the
+            // photo's capture date is only a fallback when that's unreadable.
+            if let date = imported.bestDate {
+                form.date = date
+                summaryParts.append(date.formatted(date: .abbreviated, time: .shortened))
+            }
+            // A brand printed on the receipt beats an after-the-fact GPS lookup.
+            if let station = imported.stationName {
+                form.station = station
+                summaryParts.append(station)
+            }
+            if let latitude = imported.latitude, let longitude = imported.longitude {
+                form.latitude = latitude
+                form.longitude = longitude
+                if imported.stationName == nil,
+                   let station = try? await stationLocator.nearestStation(latitude: latitude, longitude: longitude) {
+                    form.station = station.name
+                    form.latitude = station.latitude
+                    form.longitude = station.longitude
+                    summaryParts.append(station.name)
+                } else if imported.stationName == nil {
+                    summaryParts.append("location saved")
+                }
+            }
+
+            importSummary = summaryParts.isEmpty
+                ? "Receipt attached — fill in the details manually."
+                : "Imported: " + summaryParts.joined(separator: " · ")
+            if imported.reading.gallons == nil || imported.reading.pricePerGallon == nil {
+                importHint = "Couldn't read every number — fill in the rest manually."
             }
         }
     }
