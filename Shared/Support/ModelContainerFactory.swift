@@ -1,7 +1,10 @@
+import OSLog
 import SwiftData
 
 /// Single place both apps build their SwiftData container from.
 enum ModelContainerFactory {
+    private static let log = Logger(subsystem: "FuelTracker", category: "Persistence")
+
     static var schema: Schema {
         Schema([Vehicle.self, FuelEntry.self])
     }
@@ -19,7 +22,9 @@ enum ModelContainerFactory {
             )
             return try ModelContainer(for: schema, configurations: [cloudConfiguration])
         } catch {
-            print("iCloud sync unavailable, using local store: \(error)")
+            // Expected on free/personal teams without the iCloud capability;
+            // redact the error so nothing sensitive lands in the device log.
+            log.notice("iCloud sync unavailable, using local store: \(error, privacy: .private)")
         }
 
         do {
