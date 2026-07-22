@@ -29,15 +29,17 @@ struct KPICard: View {
                 .lineLimit(accessible ? nil : 1)
                 .minimumScaleFactor(accessible ? 1 : 0.6)
 
-            if let detail = kpi.detail {
-                Text(detail)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(accessible ? nil : 1)
-                    .minimumScaleFactor(accessible ? 1 : 0.8)
-            }
+            // Always render the detail line, using a blank placeholder when a
+            // stat has none, so every card is the same height and the grid
+            // reads as a tidy, uniform set of tiles.
+            Text(kpi.detail ?? " ")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(accessible ? nil : 1)
+                .minimumScaleFactor(accessible ? 1 : 0.8)
+                .opacity(kpi.detail == nil ? 0 : 1)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(12)
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .accessibilityElement(children: .ignore)
