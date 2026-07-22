@@ -90,6 +90,12 @@ struct ReceiptScanParserTests {
         #expect(hm(try #require(parse(["07/19/2026", "23:07:42"]).purchaseDate)) == (23, 7))
     }
 
+    @Test func parsesNoonAndAfternoonMeridiemTimes() throws {
+        // 12 PM stays 12 (noon), and afternoon hours add 12.
+        #expect(hm(try #require(parse(["07/19/2026", "12:30 PM"]).purchaseDate)) == (12, 30))
+        #expect(hm(try #require(parse(["07/19/2026", "01:15 PM"]).purchaseDate)) == (13, 15))
+    }
+
     @Test func timeWithoutADateIsIgnored() {
         // A time alone can't anchor a day, so there's no purchase date.
         #expect(parse(["SHELL", "14:35"]).purchaseDate == nil)
@@ -124,6 +130,12 @@ struct ReceiptScanParserTests {
     @Test func ignoresABrandHiddenInsideAnotherWord() {
         // ARCO inside MARCOS must not register as the ARCO brand.
         #expect(parse(["MARCOS PIZZA", "555-123-4567"]).stationName == nil)
+    }
+
+    @Test func findsABrandAfterAFalseBoundaryMatchEarlierInTheLine() {
+        // "BP" hides inside "SUBPAR" first; the boundary scan must keep looking
+        // and find the standalone brand later on the same line.
+        #expect(parse(["SUBPAR BP STATION"]).stationName == "BP")
     }
 
     @Test func returnsTheTopmostBrandLine() {
