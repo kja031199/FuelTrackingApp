@@ -351,7 +351,7 @@ struct AdversarialRenderingTests {
         render(ReceiptViewer(imageData: Data([0, 1, 2, 3])), container: Scenario.empty())
     }
 
-    @Test func fillUpFormRendersWithAReceiptAttached() {
+    @Test func fillUpFormAndListRenderWithAReceiptAttached() {
         let (container, vehicle) = Scenario.populated()
         let format = UIGraphicsImageRendererFormat.default()
         format.scale = 1
@@ -361,6 +361,13 @@ struct AdversarialRenderingTests {
         }
         let entry = vehicle.fillUps.first!
         entry.receiptImageData = image.jpegData(compressionQuality: 0.8)
+
+        // Form shows the thumbnail branch...
         render(AddEditFillUpView(entry: entry), container: container)
+        // ...and the history row shows the paperclip branch.
+        render(
+            FillUpsListView(selectedVehicle: vehicle, vehicles: [vehicle], selectedVehicleID: .constant("")),
+            container: container
+        )
     }
 }

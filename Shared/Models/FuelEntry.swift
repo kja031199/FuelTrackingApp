@@ -70,7 +70,10 @@ final class FuelEntry {
         gallons * pricePerGallon
     }
 
+    /// Presence check for a usable receipt. Empty data counts as none, so a
+    /// stray zero-byte blob never shows a paperclip or an empty thumbnail
+    /// slot. Whether the bytes actually decode is the viewer's concern.
     var hasReceipt: Bool {
-        receiptImageData != nil
+        !(receiptImageData?.isEmpty ?? true)
     }
 }
