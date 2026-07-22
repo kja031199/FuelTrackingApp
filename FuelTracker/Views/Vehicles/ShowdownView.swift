@@ -70,7 +70,7 @@ struct ShowdownView: View {
                     }
                 }
                 .padding(.vertical, 4)
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                 if showdown.leftMPGSeries.count >= 2 || showdown.rightMPGSeries.count >= 2 {
                     VStack(alignment: .leading, spacing: 8) {
@@ -86,7 +86,7 @@ struct ShowdownView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(16)
-                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
             }
             .padding()

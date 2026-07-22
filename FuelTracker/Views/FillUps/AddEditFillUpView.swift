@@ -273,7 +273,7 @@ struct AddEditFillUpView: View {
                         .resizable()
                         .scaledToFill()
                         .frame(width: 52, height: 52)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Receipt attached")
                         Text("Tap to view full screen")

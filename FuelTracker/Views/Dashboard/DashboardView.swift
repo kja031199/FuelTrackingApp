@@ -212,7 +212,7 @@ struct DashboardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     /// Nudge shown when a segment's MPG suggests an unlogged fill-up.
@@ -236,7 +236,7 @@ struct DashboardView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
-            .background(.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+            .background(.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -266,7 +266,7 @@ struct DashboardView: View {
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 

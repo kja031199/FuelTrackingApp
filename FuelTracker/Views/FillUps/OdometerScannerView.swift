@@ -59,7 +59,7 @@ struct OdometerScannerView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
-            .background(Color.gray.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+            .background(Color.gray.opacity(0.15), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             Button {
                 if let candidate {
@@ -74,7 +74,7 @@ struct OdometerScannerView: View {
             .disabled(candidate == nil)
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .padding()
     }
 

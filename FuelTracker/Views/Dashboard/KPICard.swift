@@ -39,7 +39,7 @@ struct KPICard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(kpi.accessibilityLabel)
     }
@@ -65,6 +65,6 @@ struct ChartCard<Content: View>: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }

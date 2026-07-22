@@ -74,7 +74,7 @@ struct PumpScannerView: View {
             .disabled(!reading.isComplete || isCapturing)
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .padding()
     }
 
@@ -102,7 +102,7 @@ struct PumpScannerView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 6)
-        .background(Color.gray.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+        .background(Color.gray.opacity(0.15), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
