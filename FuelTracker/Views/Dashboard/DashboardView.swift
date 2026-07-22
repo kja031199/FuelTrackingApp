@@ -29,6 +29,15 @@ struct DashboardView: View {
     @State private var timeRange: DashboardTimeRange = .all
     @State private var showingAddSheet = false
     @State private var entryBeingReviewed: FuelEntry?
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// Two columns normally; a single column at accessibility text sizes so
+    /// each card has full width to grow into instead of clipping.
+    private var kpiColumns: [GridItem] {
+        dynamicTypeSize.isAccessibilitySize
+            ? [GridItem(.flexible())]
+            : [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+    }
 
     private var filteredEntries: [FuelEntry] {
         let all = selectedVehicle?.fillUps ?? []
@@ -107,7 +116,7 @@ struct DashboardView: View {
                     suspectBanner(for: suspect, statistics: statistics)
                 }
 
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                LazyVGrid(columns: kpiColumns, spacing: 12) {
                     ForEach(statistics.dashboardKPIs) { kpi in
                         KPICard(kpi: kpi)
                     }
@@ -203,7 +212,7 @@ struct DashboardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     /// Nudge shown when a segment's MPG suggests an unlogged fill-up.
@@ -227,7 +236,7 @@ struct DashboardView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
-            .background(.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+            .background(.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -257,7 +266,7 @@ struct DashboardView: View {
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 

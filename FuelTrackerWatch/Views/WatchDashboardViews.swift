@@ -39,7 +39,7 @@ struct WatchKPICell: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 7)
         .padding(.vertical, 5)
-        .background(Color.gray.opacity(0.18), in: RoundedRectangle(cornerRadius: 8))
+        .background(Color.gray.opacity(0.18), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 

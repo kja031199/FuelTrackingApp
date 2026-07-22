@@ -4,7 +4,13 @@ import SwiftUI
 struct KPICard: View {
     let kpi: KPI
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
+        // At accessibility text sizes let the text wrap and grow (the grid
+        // drops to one column to give it room). At normal sizes keep the tidy
+        // single-line tile, scaling down only slightly so long values fit.
+        let accessible = dynamicTypeSize.isAccessibilitySize
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 Image(systemName: kpi.icon)
@@ -13,27 +19,27 @@ struct KPICard: View {
                 Text(kpi.title)
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .lineLimit(accessible ? nil : 1)
+                    .minimumScaleFactor(accessible ? 1 : 0.8)
             }
 
             Text(kpi.value ?? "—")
                 .font(.title2.weight(.semibold))
                 .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                .lineLimit(accessible ? nil : 1)
+                .minimumScaleFactor(accessible ? 1 : 0.6)
 
             if let detail = kpi.detail {
                 Text(detail)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .lineLimit(accessible ? nil : 1)
+                    .minimumScaleFactor(accessible ? 1 : 0.8)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(kpi.accessibilityLabel)
     }
@@ -59,6 +65,6 @@ struct ChartCard<Content: View>: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }

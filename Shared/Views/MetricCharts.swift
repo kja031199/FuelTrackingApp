@@ -104,7 +104,8 @@ struct MonthlyBarChart: View {
             .foregroundStyle(metric.color)
             .clipShape(UnevenRoundedRectangle(
                 topLeadingRadius: compact ? 2 : 4,
-                topTrailingRadius: compact ? 2 : 4
+                topTrailingRadius: compact ? 2 : 4,
+                style: .continuous
             ))
             .accessibilityLabel(total.month.formatted(.dateTime.month(.wide).year()))
             .accessibilityValue((yAxisLabel ?? { $0.formatted() })(total[keyPath: value]))
@@ -134,7 +135,7 @@ private struct SelectionCallout: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
     }
 }
 
