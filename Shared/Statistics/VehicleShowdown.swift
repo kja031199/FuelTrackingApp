@@ -75,10 +75,18 @@ struct VehicleShowdown {
         id: String, title: String, icon: String, metric: Metric,
         left: Double?, right: Double?, lowerIsBetter: Bool, format: (Double) -> String
     ) -> ShowdownRow {
-        ShowdownRow(
+        let leftText = left.map(format)
+        let rightText = right.map(format)
+        var outcome = winner(left: left, right: right, lowerIsBetter: lowerIsBetter)
+        // If both sides render to the same text, the gap is too small to see.
+        // Highlighting one as the winner over a difference the user can't read
+        // (e.g. "$3.000" vs "$3.000") is just confusing, so call it a tie.
+        if (outcome == .left || outcome == .right), leftText == rightText {
+            outcome = .tie
+        }
+        return ShowdownRow(
             id: id, title: title, icon: icon, metric: metric,
-            left: left.map(format), right: right.map(format),
-            winner: winner(left: left, right: right, lowerIsBetter: lowerIsBetter)
+            left: leftText, right: rightText, winner: outcome
         )
     }
 
@@ -91,9 +99,11 @@ struct VehicleShowdown {
     }
 
     /// Decides a contested row. A missing value on either side means there's
-    /// nothing to compare, not a win for the side that has data.
+    /// nothing to compare, not a win for the side that has data. Non-finite
+    /// values (NaN/±∞ from garbage input) are likewise treated as no contest
+    /// rather than silently winning or losing every comparison.
     static func winner(left: Double?, right: Double?, lowerIsBetter: Bool) -> ShowdownRow.Winner {
-        guard let left, let right else { return .notContested }
+        guard let left, let right, left.isFinite, right.isFinite else { return .notContested }
         if abs(left - right) < 0.0001 { return .tie }
         let leftBetter = lowerIsBetter ? left < right : left > right
         return leftBetter ? .left : .right
