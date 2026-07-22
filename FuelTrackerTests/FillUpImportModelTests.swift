@@ -178,4 +178,47 @@ struct FillUpImportModelTests {
         )
         #expect(form.date == printed)
     }
+
+    // MARK: - Filled-field reporting (drives the UI highlight)
+
+    @Test func pumpOutcomeReportsEveryFieldItFilled() {
+        let form = FillUpFormModel()
+        let station = DetectedStation(name: "Shell", latitude: 1, longitude: 2)
+        let outcome = FillUpImportModel.applyPumpReading(
+            pumpImport(gallons: 8.712, price: 3.499,
+                       capturedAt: Date(timeIntervalSince1970: 1_700_000_000),
+                       latitude: 1, longitude: 2),
+            to: form, previousOdometer: nil, typicalMilesPerFill: nil, resolvedStation: station
+        )
+        #expect(outcome.filled == [.gallons, .price, .date, .station])
+        #expect(outcome.didFill)
+    }
+
+    @Test func receiptOutcomeReportsEveryFieldItFilled() {
+        let form = FillUpFormModel()
+        let outcome = FillUpImportModel.applyReceipt(
+            receiptImport(gallons: 10, price: 3.2,
+                          purchaseDate: Date(timeIntervalSince1970: 1_700_000_000),
+                          stationName: "Chevron"),
+            to: form, resolvedStation: nil
+        )
+        #expect(outcome.filled == [.gallons, .price, .date, .station])
+    }
+
+    @Test func anUnreadableReceiptFillsAndHighlightsNothing() {
+        let form = FillUpFormModel()
+        let outcome = FillUpImportModel.applyReceipt(receiptImport(), to: form, resolvedStation: nil)
+        #expect(outcome.filled.isEmpty)
+        #expect(!outcome.didFill)
+    }
+
+    // MARK: - Pump-vs-receipt detection
+
+    @Test func aPrintedDateOrStationMarksItAReceipt() {
+        #expect(FillUpImportModel.looksLikeReceipt(receiptImport(purchaseDate: .now)))
+        #expect(FillUpImportModel.looksLikeReceipt(receiptImport(stationName: "Shell")))
+        // Numbers alone (a pump display) are not a receipt.
+        #expect(!FillUpImportModel.looksLikeReceipt(receiptImport(gallons: 10, price: 3)))
+        #expect(!FillUpImportModel.looksLikeReceipt(receiptImport()))
+    }
 }

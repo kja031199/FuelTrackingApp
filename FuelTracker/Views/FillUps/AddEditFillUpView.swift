@@ -20,7 +20,6 @@ struct AddEditFillUpView: View {
     @State private var showingOdometerScanner = false
     @State private var showingReceiptViewer = false
     @State private var photoItem: PhotosPickerItem?
-    @State private var receiptScanItem: PhotosPickerItem?
     @State private var receiptItem: PhotosPickerItem?
 
     init(entry: FuelEntry? = nil, defaultVehicle: Vehicle? = nil) {
@@ -54,25 +53,14 @@ struct AddEditFillUpView: View {
 
                     PhotosPicker(selection: $photoItem, matching: .images) {
                         HStack {
-                            Label("Import Pump Photo", systemImage: "photo.on.rectangle.angled")
+                            Label("Add from Photo", systemImage: "photo.on.rectangle.angled")
                             Spacer()
-                            if importer.isImportingPumpPhoto {
+                            if importer.isImportingPhoto {
                                 ProgressView()
                             }
                         }
                     }
-                    .disabled(importer.isImportingPumpPhoto)
-
-                    PhotosPicker(selection: $receiptScanItem, matching: .images) {
-                        HStack {
-                            Label("Scan Receipt", systemImage: "doc.text.viewfinder")
-                            Spacer()
-                            if importer.isScanningReceipt {
-                                ProgressView()
-                            }
-                        }
-                    }
-                    .disabled(importer.isScanningReceipt)
+                    .disabled(importer.isImportingPhoto)
                 } footer: {
                     VStack(alignment: .leading, spacing: 6) {
                         if let summary = importer.summary {
@@ -83,12 +71,13 @@ struct AddEditFillUpView: View {
                             Label(hint, systemImage: "exclamationmark.circle")
                                 .foregroundStyle(.orange)
                         }
-                        Text("Scan live at the pump, or pick a photo you took earlier — gallons and price are read from the display, and the date, time, and gas station come from the photo itself. Snap a paper receipt instead and it reads the fuel amount plus the printed date and station. Everything happens on your device.")
+                        Text("Scan live at the pump, or pick a photo you already took — of the pump display or a paper receipt. The app figures out which it is and fills in the gallons, price, date, and station. Everything happens on your device.")
                     }
                 }
 
                 Section {
                     DatePicker("Date", selection: $form.date, displayedComponents: [.date, .hourAndMinute])
+                        .listRowBackground(highlightBackground(for: .date))
 
                     LabeledContent("Odometer") {
                         HStack {
@@ -104,18 +93,21 @@ struct AddEditFillUpView: View {
                             .accessibilityLabel("Scan odometer with the camera")
                         }
                     }
+                    .listRowBackground(highlightBackground(for: .odometer))
 
                     LabeledContent("Gallons") {
                         TextField("0.000", value: $form.gallons, format: .number)
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                     }
+                    .listRowBackground(highlightBackground(for: .gallons))
 
                     LabeledContent("Price per Gallon") {
                         TextField("0.000", value: $form.pricePerGallon, format: .number)
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                     }
+                    .listRowBackground(highlightBackground(for: .price))
 
                     LabeledContent("Total Cost") {
                         Text(Format.currency(form.totalCost))
@@ -161,6 +153,7 @@ struct AddEditFillUpView: View {
                         .disabled(importer.isLocatingStation)
                         .accessibilityLabel("Detect gas station from my location")
                     }
+                    .listRowBackground(highlightBackground(for: .station))
 
                     TextField("Notes (optional)", text: $form.notes, axis: .vertical)
                         .lineLimit(1...4)
@@ -185,6 +178,7 @@ struct AddEditFillUpView: View {
             }
             .navigationTitle(form.isEditing ? "Edit Fill-Up" : "New Fill-Up")
             .navigationBarTitleDisplayMode(.inline)
+            .sensoryFeedback(.success, trigger: importer.successPulse)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -225,23 +219,12 @@ struct AddEditFillUpView: View {
                         return
                     }
                     let context = odometerScanContext
-                    await importer.importPumpPhoto(
+                    await importer.importPhoto(
                         data: data,
                         into: form,
                         previousOdometer: context.previous,
                         typicalMilesPerFill: context.typical
                     )
-                }
-            }
-            .onChange(of: receiptScanItem) { _, newItem in
-                guard let newItem else { return }
-                Task {
-                    defer { receiptScanItem = nil }
-                    guard let data = try? await newItem.loadTransferable(type: Data.self) else {
-                        importer.reportPhotoLoadFailure()
-                        return
-                    }
-                    await importer.scanReceipt(data: data, into: form)
                 }
             }
             .onChange(of: receiptItem) { _, newItem in
@@ -269,6 +252,13 @@ struct AddEditFillUpView: View {
                 }
             }
         }
+    }
+
+    /// A field row's background, briefly tinted when the last import filled it.
+    private func highlightBackground(for field: ImportOutcome.Field) -> some View {
+        let isOn = importer.highlightedFields.contains(field)
+        return (isOn ? Color.accentColor.opacity(0.15) : Color(.secondarySystemGroupedBackground))
+            .animation(.easeInOut(duration: 0.35), value: importer.highlightedFields)
     }
 
     @ViewBuilder
