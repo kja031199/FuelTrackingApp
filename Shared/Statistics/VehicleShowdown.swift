@@ -5,7 +5,10 @@ struct ShowdownRow: Identifiable {
     enum Winner: Equatable {
         case left, right, tie
         /// Not a contest — either informational, or one side lacks the data.
-        case none
+        /// Deliberately NOT named `none`: that collides with `Optional.none`,
+        /// so `someRow?.winner == .none` would silently test for nil instead
+        /// of this case.
+        case notContested
     }
 
     let id: String
@@ -64,7 +67,7 @@ struct VehicleShowdown {
 
     /// True when at least one contested metric had data on both sides —
     /// lets the verdict tell "too close to call" apart from "no data yet."
-    var hasContest: Bool { rows.contains { $0.winner != .none } }
+    var hasContest: Bool { rows.contains { $0.winner != .notContested } }
 
     // MARK: - Row builders
 
@@ -84,13 +87,13 @@ struct VehicleShowdown {
         left: Double, right: Double, format: (Double) -> String
     ) -> ShowdownRow {
         ShowdownRow(id: id, title: title, icon: icon, metric: metric,
-                    left: format(left), right: format(right), winner: .none)
+                    left: format(left), right: format(right), winner: .notContested)
     }
 
     /// Decides a contested row. A missing value on either side means there's
     /// nothing to compare, not a win for the side that has data.
     static func winner(left: Double?, right: Double?, lowerIsBetter: Bool) -> ShowdownRow.Winner {
-        guard let left, let right else { return .none }
+        guard let left, let right else { return .notContested }
         if abs(left - right) < 0.0001 { return .tie }
         let leftBetter = lowerIsBetter ? left < right : left > right
         return leftBetter ? .left : .right

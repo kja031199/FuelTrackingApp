@@ -38,9 +38,9 @@ struct VehicleShowdownTests {
         #expect(VehicleShowdown.winner(left: 30, right: 30, lowerIsBetter: false) == .tie)
         #expect(VehicleShowdown.winner(left: 30, right: 30.00005, lowerIsBetter: false) == .tie)
         // A missing side is no contest, not a win for the side with data.
-        #expect(VehicleShowdown.winner(left: nil, right: 30, lowerIsBetter: false) == .none)
-        #expect(VehicleShowdown.winner(left: 30, right: nil, lowerIsBetter: false) == .none)
-        #expect(VehicleShowdown.winner(left: nil, right: nil, lowerIsBetter: false) == .none)
+        #expect(VehicleShowdown.winner(left: nil, right: 30, lowerIsBetter: false) == .notContested)
+        #expect(VehicleShowdown.winner(left: 30, right: nil, lowerIsBetter: false) == .notContested)
+        #expect(VehicleShowdown.winner(left: nil, right: nil, lowerIsBetter: false) == .notContested)
     }
 
     // MARK: - Row-level outcomes
@@ -79,9 +79,9 @@ struct VehicleShowdownTests {
         )
         // Miles, spending, and fill-ups differ between the two, but none is a
         // "win" — lower isn't inherently better.
-        #expect(showdown.row("miles")?.winner == .none)
-        #expect(showdown.row("spent")?.winner == .none)
-        #expect(showdown.row("fills")?.winner == .none)
+        #expect(showdown.row("miles")?.winner == .notContested)
+        #expect(showdown.row("spent")?.winner == .notContested)
+        #expect(showdown.row("fills")?.winner == .notContested)
     }
 
     @Test func missingDataMeansNoContestForThatRow() {
@@ -91,8 +91,8 @@ struct VehicleShowdownTests {
             leftName: "Eff", leftEntries: efficient(price: 3.00),
             rightName: "New", rightEntries: [mk(1, 30_000, 10, 3.10)]
         )
-        #expect(showdown.row("mpg")?.winner == .none)
-        #expect(showdown.row("cpm")?.winner == .none)
+        #expect(showdown.row("mpg")?.winner == .notContested)
+        #expect(showdown.row("cpm")?.winner == .notContested)
         #expect(showdown.row("ppg")?.winner == .left)   // $3.00 < $3.10
         #expect(showdown.leftWins == 1)
         #expect(showdown.hasContest)
@@ -103,7 +103,7 @@ struct VehicleShowdownTests {
     @Test func twoEmptyVehiclesHaveNoContest() {
         let showdown = VehicleShowdown(leftName: "A", leftEntries: [], rightName: "B", rightEntries: [])
         #expect(showdown.rows.count == 6)
-        #expect(showdown.rows.allSatisfy { $0.winner == .none })
+        #expect(showdown.rows.allSatisfy { $0.winner == .notContested })
         #expect(!showdown.hasContest)
         #expect(showdown.leftWins == 0)
         #expect(showdown.rightWins == 0)
