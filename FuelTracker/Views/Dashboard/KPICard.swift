@@ -51,7 +51,14 @@ struct KPICard: View {
 struct ChartCard<Content: View>: View {
     let title: String
     let subtitle: String
+    /// A spoken overview of the chart's data, read by VoiceOver after the
+    /// title and subtitle so a non-visual user gets the trend at a glance.
+    var accessibilitySummary: String? = nil
     @ViewBuilder let content: Content
+
+    private var headerLabel: String {
+        [title, subtitle, accessibilitySummary].compactMap { $0 }.joined(separator: ". ")
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -62,6 +69,9 @@ struct ChartCard<Content: View>: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(headerLabel)
+
             content
                 .frame(height: 200)
         }

@@ -47,4 +47,35 @@ struct AccessibilityTests {
         #expect(info.accessibilityLabel(leftName: "A", rightName: "B")
                 == "Miles Tracked. A: 800. B: no data.")
     }
+
+    // MARK: - Chart summaries (spoken overview of a series)
+
+    private func series(_ values: [Double]) -> [DateValuePoint] {
+        values.enumerated().map { index, value in
+            DateValuePoint(id: UUID(), date: Date(timeIntervalSince1970: Double(index) * 86_400), value: value)
+        }
+    }
+
+    private let whole: (Double) -> String = { String(format: "%.0f", $0) }
+
+    @Test func chartSummaryIsNilForEmptyData() {
+        #expect(ChartAccessibility.summary([], unit: "MPG", format: whole) == nil)
+    }
+
+    @Test func chartSummaryDescribesASinglePoint() {
+        #expect(ChartAccessibility.summary(series([24]), unit: "MPG", format: whole)
+                == "One point, 24 MPG.")
+    }
+
+    @Test func chartSummaryReportsRangeAverageLatestAndUpwardTrend() {
+        #expect(ChartAccessibility.summary(series([20, 25, 30]), unit: "MPG", format: whole)
+                == "3 points, from 20 to 30 MPG, averaging 25, latest 30, trending up.")
+    }
+
+    @Test func chartSummaryDetectsDownwardAndFlatTrends() {
+        #expect(ChartAccessibility.summary(series([30, 25, 20]), unit: "MPG", format: whole)?
+            .contains("trending down") == true)
+        #expect(ChartAccessibility.summary(series([25, 24, 25]), unit: "MPG", format: whole)?
+            .contains("roughly flat") == true)
+    }
 }
