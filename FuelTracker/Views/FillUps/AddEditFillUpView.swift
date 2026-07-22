@@ -15,19 +15,13 @@ struct AddEditFillUpView: View {
     private let defaultVehicle: Vehicle?
     @State private var form: FillUpFormModel
     @State private var selectedVehicleID: UUID?
+    @State private var importer = FillUpImportModel()
     @State private var showingScanner = false
     @State private var showingOdometerScanner = false
-    @State private var stationLocator = StationLocator()
-    @State private var isLocatingStation = false
-    @State private var stationHint: String?
-    @State private var photoItem: PhotosPickerItem?
-    @State private var isImportingPhoto = false
-    @State private var receiptScanItem: PhotosPickerItem?
-    @State private var isScanningReceipt = false
-    @State private var importSummary: String?
-    @State private var importHint: String?
-    @State private var receiptItem: PhotosPickerItem?
     @State private var showingReceiptViewer = false
+    @State private var photoItem: PhotosPickerItem?
+    @State private var receiptScanItem: PhotosPickerItem?
+    @State private var receiptItem: PhotosPickerItem?
 
     init(entry: FuelEntry? = nil, defaultVehicle: Vehicle? = nil) {
         self.defaultVehicle = entry?.vehicle ?? defaultVehicle
@@ -62,31 +56,31 @@ struct AddEditFillUpView: View {
                         HStack {
                             Label("Import Pump Photo", systemImage: "photo.on.rectangle.angled")
                             Spacer()
-                            if isImportingPhoto {
+                            if importer.isImportingPumpPhoto {
                                 ProgressView()
                             }
                         }
                     }
-                    .disabled(isImportingPhoto)
+                    .disabled(importer.isImportingPumpPhoto)
 
                     PhotosPicker(selection: $receiptScanItem, matching: .images) {
                         HStack {
                             Label("Scan Receipt", systemImage: "doc.text.viewfinder")
                             Spacer()
-                            if isScanningReceipt {
+                            if importer.isScanningReceipt {
                                 ProgressView()
                             }
                         }
                     }
-                    .disabled(isScanningReceipt)
+                    .disabled(importer.isScanningReceipt)
                 } footer: {
                     VStack(alignment: .leading, spacing: 6) {
-                        if let importSummary {
-                            Label(importSummary, systemImage: "sparkles")
+                        if let summary = importer.summary {
+                            Label(summary, systemImage: "sparkles")
                                 .foregroundStyle(.tint)
                         }
-                        if let importHint {
-                            Label(importHint, systemImage: "exclamationmark.circle")
+                        if let hint = importer.hint {
+                            Label(hint, systemImage: "exclamationmark.circle")
                                 .foregroundStyle(.orange)
                         }
                         Text("Scan live at the pump, or pick a photo you took earlier — gallons and price are read from the display, and the date, time, and gas station come from the photo itself. Snap a paper receipt instead and it reads the fuel amount plus the printed date and station. Everything happens on your device.")
@@ -155,16 +149,16 @@ struct AddEditFillUpView: View {
                     HStack {
                         TextField("Gas Station (optional)", text: $form.station)
                         Button {
-                            detectStation()
+                            Task { await importer.detectStation(into: form) }
                         } label: {
-                            if isLocatingStation {
+                            if importer.isLocatingStation {
                                 ProgressView()
                             } else {
                                 Image(systemName: "location.fill")
                             }
                         }
                         .buttonStyle(.borderless)
-                        .disabled(isLocatingStation)
+                        .disabled(importer.isLocatingStation)
                         .accessibilityLabel("Detect gas station from my location")
                     }
 
@@ -174,7 +168,7 @@ struct AddEditFillUpView: View {
                     Text("Details")
                 } footer: {
                     VStack(alignment: .leading, spacing: 6) {
-                        if let stationHint {
+                        if let stationHint = importer.stationHint {
                             Label(stationHint, systemImage: "location.slash")
                         }
                         Text("Marking full tanks lets the app calculate exact MPG between fills. Leave it off for partial fills — those gallons still count toward the next full-tank MPG. If you forgot to log a fill-up before this one, mark it so the impossible-looking MPG segment is excluded from your stats — the fuel still counts toward spending.")
@@ -223,18 +217,40 @@ struct AddEditFillUpView: View {
                 }
             }
             .onChange(of: photoItem) { _, newItem in
-                if let newItem {
-                    importPhoto(newItem)
+                guard let newItem else { return }
+                Task {
+                    defer { photoItem = nil }
+                    guard let data = try? await newItem.loadTransferable(type: Data.self) else {
+                        importer.reportPhotoLoadFailure()
+                        return
+                    }
+                    let context = odometerScanContext
+                    await importer.importPumpPhoto(
+                        data: data,
+                        into: form,
+                        previousOdometer: context.previous,
+                        typicalMilesPerFill: context.typical
+                    )
                 }
             }
             .onChange(of: receiptScanItem) { _, newItem in
-                if let newItem {
-                    scanReceipt(newItem)
+                guard let newItem else { return }
+                Task {
+                    defer { receiptScanItem = nil }
+                    guard let data = try? await newItem.loadTransferable(type: Data.self) else {
+                        importer.reportPhotoLoadFailure()
+                        return
+                    }
+                    await importer.scanReceipt(data: data, into: form)
                 }
             }
             .onChange(of: receiptItem) { _, newItem in
-                if let newItem {
-                    attachReceipt(newItem)
+                guard let newItem else { return }
+                Task {
+                    defer { receiptItem = nil }
+                    if let data = try? await newItem.loadTransferable(type: Data.self) {
+                        importer.attachReceipt(data: data, into: form)
+                    }
                 }
             }
             .sheet(isPresented: $showingReceiptViewer) {
@@ -248,8 +264,8 @@ struct AddEditFillUpView: View {
                 }
                 // Auto-fill the station for new entries once the user has
                 // granted location access (the button asks the first time).
-                if !form.isEditing, form.station.isEmpty, stationLocator.isAuthorized {
-                    detectStation()
+                if !form.isEditing, form.station.isEmpty, importer.isStationAuthorized {
+                    Task { await importer.detectStation(into: form) }
                 }
             }
         }
@@ -293,194 +309,12 @@ struct AddEditFillUpView: View {
         }
     }
 
-    private func attachReceipt(_ item: PhotosPickerItem) {
-        Task {
-            defer { receiptItem = nil }
-            if let data = try? await item.loadTransferable(type: Data.self),
-               let compressed = ReceiptImage.compressed(from: data) {
-                form.receiptImageData = compressed
-            }
-        }
-    }
-
-    private func importPhoto(_ item: PhotosPickerItem) {
-        isImportingPhoto = true
-        importSummary = nil
-        importHint = nil
-        Task {
-            defer {
-                isImportingPhoto = false
-                photoItem = nil
-            }
-
-            guard let data = try? await item.loadTransferable(type: Data.self) else {
-                importHint = "Couldn't load that photo — try picking it again."
-                return
-            }
-
-            // Keep the photo with the fill-up rather than discarding it after
-            // parsing — an imported pump photo is a receipt worth saving. Store
-            // only the re-encoded, size-bounded image; never the raw bytes,
-            // which could be an unbounded/undecodable payload.
-            form.receiptImageData = ReceiptImage.compressed(from: data)
-
-            let imported = await PumpPhotoImporter.process(data: data)
-            guard imported.foundAnything else {
-                importHint = "Couldn't read pump numbers or metadata from that photo. A sharp, straight-on shot of the display works best."
-                return
-            }
-
-            var summaryParts: [String] = []
-
-            if let gallons = imported.reading.gallons {
-                form.gallons = gallons
-                summaryParts.append("\(Format.gallons(gallons)) gal")
-            }
-            if let price = imported.reading.pricePerGallon {
-                form.pricePerGallon = price
-                summaryParts.append("\(Format.fuelPrice(price))/gal")
-            }
-            // A dashboard photo can carry the odometer. Only a reading that
-            // validates against this vehicle's history is trusted enough to
-            // auto-fill; anything doubtful is left to the live scanner or
-            // manual entry.
-            if form.odometer == nil {
-                let claimed = [
-                    imported.reading.gallons,
-                    imported.reading.pricePerGallon,
-                    imported.reading.totalCost,
-                ].compactMap { $0 }
-                let context = odometerScanContext
-                if let candidate = OdometerScanParser.parse(
-                    imported.ocrLines,
-                    previousOdometer: context.previous,
-                    typicalMilesPerFill: context.typical,
-                    excluding: claimed
-                ), case .plausible = candidate.validation {
-                    form.odometer = candidate.value
-                    summaryParts.append("\(Format.odometer(candidate.value)) mi")
-                }
-            }
-            if let capturedAt = imported.capturedAt {
-                form.date = capturedAt
-                summaryParts.append(capturedAt.formatted(date: .abbreviated, time: .shortened))
-            }
-            if let latitude = imported.latitude, let longitude = imported.longitude {
-                form.latitude = latitude
-                form.longitude = longitude
-                if let station = try? await stationLocator.nearestStation(latitude: latitude, longitude: longitude) {
-                    form.station = station.name
-                    form.latitude = station.latitude
-                    form.longitude = station.longitude
-                    summaryParts.append(station.name)
-                } else {
-                    summaryParts.append("location saved")
-                }
-            }
-
-            importSummary = "Imported: " + summaryParts.joined(separator: " · ")
-            if imported.reading.gallons == nil || imported.reading.pricePerGallon == nil {
-                importHint = "Couldn't read every pump number — fill in the rest manually."
-            }
-        }
-    }
-
-    private func scanReceipt(_ item: PhotosPickerItem) {
-        isScanningReceipt = true
-        importSummary = nil
-        importHint = nil
-        Task {
-            defer {
-                isScanningReceipt = false
-                receiptScanItem = nil
-            }
-
-            guard let data = try? await item.loadTransferable(type: Data.self) else {
-                importHint = "Couldn't load that photo — try picking it again."
-                return
-            }
-
-            // The receipt photo is itself the record worth keeping. Store only
-            // the re-encoded, size-bounded image, never the raw bytes.
-            form.receiptImageData = ReceiptImage.compressed(from: data)
-
-            let imported = await ReceiptPhotoImporter.process(data: data)
-            guard imported.foundAnything else {
-                importHint = "Couldn't read this receipt. A flat, well-lit photo of the whole receipt works best."
-                return
-            }
-
-            var summaryParts: [String] = []
-
-            if let gallons = imported.reading.gallons {
-                form.gallons = gallons
-                summaryParts.append("\(Format.gallons(gallons)) gal")
-            }
-            if let price = imported.reading.pricePerGallon {
-                form.pricePerGallon = price
-                summaryParts.append("\(Format.fuelPrice(price))/gal")
-            }
-            // The date printed on the receipt is the real purchase date; the
-            // photo's capture date is only a fallback when that's unreadable.
-            if let date = imported.bestDate {
-                form.date = date
-                summaryParts.append(date.formatted(date: .abbreviated, time: .shortened))
-            }
-            // A brand printed on the receipt beats an after-the-fact GPS lookup.
-            if let station = imported.stationName {
-                form.station = station
-                summaryParts.append(station)
-            }
-            if let latitude = imported.latitude, let longitude = imported.longitude {
-                form.latitude = latitude
-                form.longitude = longitude
-                if imported.stationName == nil,
-                   let station = try? await stationLocator.nearestStation(latitude: latitude, longitude: longitude) {
-                    form.station = station.name
-                    form.latitude = station.latitude
-                    form.longitude = station.longitude
-                    summaryParts.append(station.name)
-                } else if imported.stationName == nil {
-                    summaryParts.append("location saved")
-                }
-            }
-
-            importSummary = summaryParts.isEmpty
-                ? "Receipt attached — fill in the details manually."
-                : "Imported: " + summaryParts.joined(separator: " · ")
-            if imported.reading.gallons == nil || imported.reading.pricePerGallon == nil {
-                importHint = "Couldn't read every number — fill in the rest manually."
-            }
-        }
-    }
-
     /// History context for validating a scanned odometer: the vehicle's
     /// highest recorded reading and its typical distance between fills.
     private var odometerScanContext: (previous: Double?, typical: Double?) {
         guard let vehicle = selectedVehicle else { return (nil, nil) }
         let statistics = FuelStatistics(entries: vehicle.fillUps)
         return (vehicle.fillUps.map(\.odometer).max(), statistics.averageMilesBetweenFillUps)
-    }
-
-    private func detectStation() {
-        guard !isLocatingStation else { return }
-        isLocatingStation = true
-        stationHint = nil
-        Task {
-            defer { isLocatingStation = false }
-            do {
-                let station = try await stationLocator.detectStation()
-                form.station = station.name
-                form.latitude = station.latitude
-                form.longitude = station.longitude
-            } catch StationLocatorError.permissionDenied {
-                stationHint = "Allow location access in Settings to detect the station automatically."
-            } catch StationLocatorError.noStationNearby {
-                stationHint = "No gas station found nearby — you can type the name instead."
-            } catch {
-                stationHint = "Couldn't determine your location — you can type the station name instead."
-            }
-        }
     }
 
     private func save() {
