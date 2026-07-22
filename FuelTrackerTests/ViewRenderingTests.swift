@@ -234,6 +234,42 @@ struct ScreenRenderingTests {
         let solo = vehicle(named: "Solo", in: container, fills: 3, milesPerFill: 300, price: 3.2)
         render(ShowdownView(vehicles: [solo]), container: container)
     }
+
+    @Test func showdownWithIdenticallyNamedVehiclesRenders() {
+        // Same name on both sides exercises the chart's ①/② disambiguation
+        // and a legend whose keys would otherwise collide.
+        let container = ModelContainerFactory.makeInMemory()
+        let a = vehicle(named: "Civic", in: container, fills: 3, milesPerFill: 360, price: 3.1)
+        let b = vehicle(named: "Civic", in: container, fills: 3, milesPerFill: 300, price: 3.3)
+        render(ShowdownView(vehicles: [a, b]), container: container)
+    }
+
+    @Test func showdownWithOnePopulatedAndOneEmptyVehicleRendersDashes() {
+        // One side has no data at all: its contested cells must render as
+        // "—" and no row should highlight a winner.
+        let container = ModelContainerFactory.makeInMemory()
+        let full = vehicle(named: "Tracked", in: container, fills: 4, milesPerFill: 350, price: 3.2)
+        let blank = Vehicle(name: "Untouched")
+        container.mainContext.insert(blank)
+        render(ShowdownView(vehicles: [full, blank]), container: container)
+    }
+
+    @Test func showdownRendersWithPathologicalHistoryOnBothSides() {
+        // Duplicate odometers, a zero-gallon fill, free fuel, a partial-only
+        // stretch and a future date on both vehicles — the screen (verdict,
+        // table, and MPG overlay) must render without incident.
+        let (container, left) = Scenario.pathological()
+        let right = Vehicle(name: "Other")
+        container.mainContext.insert(right)
+        for entry in [
+            FuelEntry(date: .now, odometer: 500, gallons: 12, pricePerGallon: 2.9, vehicle: right),
+            FuelEntry(date: .now, odometer: 500, gallons: 0, pricePerGallon: 0, vehicle: right),
+            FuelEntry(date: .now, odometer: 900, gallons: 8, pricePerGallon: 3.1, isFullTank: false, vehicle: right),
+        ] {
+            container.mainContext.insert(entry)
+        }
+        render(ShowdownView(vehicles: [left, right]), container: container)
+    }
 }
 
 // MARK: - Components
