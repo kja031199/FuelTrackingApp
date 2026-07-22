@@ -17,7 +17,8 @@ models, statistics, parsing, and shared form logic.
 ## Layers
 
 ```
-Models        Vehicle, FuelEntry, FuelGrade          (SwiftData @Model)
+Models        Vehicle, FuelEntry, FuelGrade,         (SwiftData @Model
+              FuelEntryDraft                          + the write chokepoint)
    ▲
 Domain        FuelStatistics, VehicleShowdown,        (pure value logic)
               WeekdayPricePattern, KPI,
@@ -59,10 +60,14 @@ re-opens a closed security issue.
    activates only when the entitlement is present; otherwise the container
    factory falls back to a local store. Do not commit populated entitlements.
 
-4. **All fill-up writes go through one validation chokepoint.** Today that is
-   `FillUpFormModel.save(to:in:)`, gated by `canSave`. Any new way to create an
-   entry — including features that accept input from other people — must reuse
-   that validation, never a parallel `context.insert` that skips it.
+4. **All fill-up writes go through one validation chokepoint.** Every new or
+   edited entry is built from a `FuelEntryDraft`, whose failable initializer
+   rejects anything without positive odometer, gallons, and price, and which
+   owns the single field-by-field mapping onto `FuelEntry`. `FillUpFormModel`
+   exposes the current form as a `draft` and saves through it. Any new way to
+   create an entry — including features that accept input from other people —
+   must build a `FuelEntryDraft`, never a parallel `context.insert` that skips
+   the validation.
 
 5. **Untrusted images enter through one bounded decode.** Photos are attacker-
    controllable (a library can hold images from anyone). All image ingestion
@@ -79,15 +84,16 @@ re-opens a closed security issue.
 
 ```
 Shared/
-├── Models/          SwiftData models (single source of truth)
+├── Models/          SwiftData models + FuelEntryDraft (the write chokepoint)
 ├── Statistics/      KPI & chart math, showdown, weekday patterns
+├── Scanning/        Pure OCR-text → value parsers (pump, odometer, receipt)
 ├── Support/         Shared form model, formatters, metric colors, container factory
-│   └── *ScanParser  Pure OCR-text → value parsers (both platforms)
 └── Views/           Generic chart components used by both apps
 
 FuelTracker/         iPhone app (thin view layer)
-├── Services/        iOS-only: photo importers, image sanitizing, location,
-│                    and FillUpImportModel (import/scan/station orchestration)
+├── Scanning/        iOS-only: photo importers, image sanitizing, and
+│                    FillUpImportModel (import/scan/station orchestration)
+├── Services/        iOS-only: StationLocator
 └── Views/           Dashboard, FillUps, Vehicles
 
 FuelTrackerWatch/    Apple Watch app (thin view layer)
