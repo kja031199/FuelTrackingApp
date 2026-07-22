@@ -123,7 +123,13 @@ struct DashboardView: View {
                 }
 
                 if statistics.mpgPoints.count >= 2 {
-                    ChartCard(title: "Fuel Economy", subtitle: "MPG per full-tank fill-up") {
+                    ChartCard(
+                        title: "Fuel Economy",
+                        subtitle: "MPG per full-tank fill-up",
+                        accessibilitySummary: ChartAccessibility.summary(
+                            statistics.mpgSeries, unit: "miles per gallon", format: Format.mpg
+                        )
+                    ) {
                         MetricLineChart(
                             points: statistics.mpgSeries,
                             metric: .economy,
@@ -136,7 +142,13 @@ struct DashboardView: View {
                 }
 
                 if statistics.pricePoints.count >= 2 {
-                    ChartCard(title: "Gas Price", subtitle: "Price per gallon you paid") {
+                    ChartCard(
+                        title: "Gas Price",
+                        subtitle: "Price per gallon you paid",
+                        accessibilitySummary: ChartAccessibility.summary(
+                            statistics.priceSeries, unit: "per gallon", format: Format.fuelPrice
+                        )
+                    ) {
                         MetricLineChart(
                             points: statistics.priceSeries,
                             metric: .price,
@@ -151,7 +163,13 @@ struct DashboardView: View {
                 }
 
                 if statistics.odometerPoints.count >= 2 {
-                    ChartCard(title: "Odometer", subtitle: "Mileage recorded at each fill-up") {
+                    ChartCard(
+                        title: "Odometer",
+                        subtitle: "Mileage recorded at each fill-up",
+                        accessibilitySummary: ChartAccessibility.summary(
+                            statistics.odometerSeries, unit: "miles", format: Format.odometer
+                        )
+                    ) {
                         MetricLineChart(
                             points: statistics.odometerSeries,
                             metric: .distance,
