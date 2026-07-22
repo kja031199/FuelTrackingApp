@@ -16,6 +16,9 @@ The odometer field has its own camera button: point it at your dashboard and OCR
 ### Import a pump photo taken earlier
 Took a photo at the pump to log later? Tap **Import Pump Photo** on the fill-up form and pick it: the same on-device OCR reads gallons and price off the display, the **date and time** come from the photo's EXIF metadata, and the **gas station** is looked up from the GPS coordinates embedded in the photo — no location permission needed, since the location comes from the photo itself. A dashboard photo fills the **odometer** the same way, but only when the reading validates against your vehicle's history — doubtful readings are never auto-filled. A summary line shows exactly what was imported; anything unreadable is left for manual entry.
 
+### Scan a paper receipt
+Kept the receipt instead? Tap **Scan Receipt** on the fill-up form and pick a photo of it. The same on-device OCR reads the fuel **gallons and price** (the gallons × price ≈ total cross-check ignores car-wash, tax, and grand-total lines), and — unlike a pump display — the receipt also gives up its **printed purchase date and time** and the **station brand**. The printed date is trusted over the photo's own timestamp, since a receipt is often photographed days later; the station is matched against known fuel retailers so you get a clean name ("Shell", "Circle K") rather than a line of address text, falling back to the photo's GPS only when no brand is printed. The receipt image is attached to the entry automatically, and anything unreadable is left for you to fill in. Everything happens on your device.
+
 ### Day-of-week price patterns
 The dashboard surfaces your personal price rhythm from your own history — no external data. A **Price by Day** card charts your average price per gallon by weekday (a dot plot with a zoomed axis so cent-level differences are visible and honest, cheapest day highlighted) and headlines the takeaway: "You pay about $0.11/gal less on Tuesdays than Fridays." It appears once you have at least two weekdays of data, and the headline stays quiet until there's a handful of fills and a real (≥1¢) spread — so it never reads noise as a pattern.
 
@@ -112,6 +115,9 @@ Shared/                           # Compiled into both apps — single source of
 └── Support/
     ├── ModelContainerFactory.swift  # CloudKit container with local fallback; in-memory for tests
     ├── FillUpFormModel.swift        # Form state, validation & saving for both entry screens
+    ├── PumpScanParser.swift         # OCR text → gallons/price/total (labels + arithmetic)
+    ├── ReceiptScanParser.swift      # Receipt OCR → fuel numbers + printed date + station brand
+    ├── OdometerScanParser.swift     # OCR text → odometer, validated against history
     ├── Metric.swift                 # Fixed metric→color mapping
     └── Formatters.swift             # Number/currency formatting
 FuelTracker/                      # iPhone app (thin view layer)
