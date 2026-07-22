@@ -473,3 +473,55 @@ struct AdversarialRenderingTests {
         )
     }
 }
+
+// MARK: - Dynamic Type (largest accessibility size)
+
+/// The screens must lay out at the largest accessibility text size without
+/// crashing — the KPI grid drops to one column and cards grow rather than
+/// clipping. These exercise that layout path end to end.
+@MainActor
+struct DynamicTypeRenderingTests {
+    @Test func dashboardRendersAtLargestAccessibilitySize() {
+        let (container, vehicle) = Scenario.populated()
+        render(
+            DashboardView(selectedVehicle: vehicle, vehicles: [vehicle], selectedVehicleID: .constant(""))
+                .dynamicTypeSize(.accessibility5),
+            container: container
+        )
+    }
+
+    @Test func fillUpsListRendersAtLargestAccessibilitySize() {
+        let (container, vehicle) = Scenario.populated()
+        render(
+            FillUpsListView(selectedVehicle: vehicle, vehicles: [vehicle], selectedVehicleID: .constant(""))
+                .dynamicTypeSize(.accessibility5),
+            container: container
+        )
+    }
+
+    @Test func addFillUpFormRendersAtLargestAccessibilitySize() {
+        let (container, vehicle) = Scenario.populated()
+        render(
+            AddEditFillUpView(defaultVehicle: vehicle).dynamicTypeSize(.accessibility5),
+            container: container
+        )
+    }
+
+    @Test func kpiCardGrowsRatherThanClipsAtLargestAccessibilitySize() {
+        let kpi = KPI(title: "Avg Price/Gal", value: "$3.499", detail: "Last: $3.599",
+                      icon: "fuelpump.fill", metric: .price)
+        render(KPICard(kpi: kpi).dynamicTypeSize(.accessibility5), container: Scenario.empty())
+    }
+
+    @Test func showdownRendersAtLargestAccessibilitySize() {
+        let container = ModelContainerFactory.makeInMemory()
+        let a = Vehicle(name: "Prius")
+        let b = Vehicle(name: "Truck")
+        container.mainContext.insert(a)
+        container.mainContext.insert(b)
+        render(
+            ShowdownView(vehicles: [a, b]).dynamicTypeSize(.accessibility5),
+            container: container
+        )
+    }
+}
