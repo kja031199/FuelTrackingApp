@@ -66,7 +66,7 @@ struct ShowdownView: View {
                 VStack(spacing: 0) {
                     ForEach(Array(showdown.rows.enumerated()), id: \.element.id) { index, row in
                         if index > 0 { Divider() }
-                        rowView(row)
+                        rowView(row, leftName: showdown.leftName, rightName: showdown.rightName)
                     }
                 }
                 .padding(.vertical, 4)
@@ -102,6 +102,7 @@ struct ShowdownView: View {
             Spacer()
             Image(systemName: "arrow.left.arrow.right")
                 .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
             Spacer()
             Picker("Right", selection: $rightID) {
                 ForEach(vehicles) { Text($0.name).tag(Optional($0.id)) }
@@ -119,7 +120,7 @@ struct ShowdownView: View {
         .font(.subheadline.weight(.semibold))
     }
 
-    private func rowView(_ row: ShowdownRow) -> some View {
+    private func rowView(_ row: ShowdownRow, leftName: String, rightName: String) -> some View {
         HStack(spacing: 8) {
             valueText(row.left, highlighted: row.winner == .left, metric: row.metric)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -140,6 +141,8 @@ struct ShowdownView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(row.accessibilityLabel(leftName: leftName, rightName: rightName))
     }
 
     private func valueText(_ value: String?, highlighted: Bool, metric: Metric) -> some View {
@@ -187,6 +190,8 @@ struct ShowdownMPGChart: View {
                 )
                 .foregroundStyle(by: .value("Vehicle", leftLabel))
                 .interpolationMethod(.monotone)
+                .accessibilityLabel("\(leftLabel), \(point.date.formatted(.dateTime.month(.abbreviated).day()))")
+                .accessibilityValue("\(Format.mpg(point.value)) MPG")
             }
             ForEach(rightSeries) { point in
                 LineMark(
@@ -196,6 +201,8 @@ struct ShowdownMPGChart: View {
                 )
                 .foregroundStyle(by: .value("Vehicle", rightLabel))
                 .interpolationMethod(.monotone)
+                .accessibilityLabel("\(rightLabel), \(point.date.formatted(.dateTime.month(.abbreviated).day()))")
+                .accessibilityValue("\(Format.mpg(point.value)) MPG")
             }
         }
         .chartForegroundStyleScale([leftLabel: Color.blue, rightLabel: Color.orange])

@@ -18,6 +18,20 @@ struct ShowdownRow: Identifiable {
     let left: String?
     let right: String?
     let winner: Winner
+
+    /// A single spoken description of the row for VoiceOver, stating the
+    /// winner in words — the on-screen highlight is color, which VoiceOver
+    /// and color-blind users can't rely on.
+    func accessibilityLabel(leftName: String, rightName: String) -> String {
+        var label = "\(title). \(leftName): \(left ?? "no data"). \(rightName): \(right ?? "no data")."
+        switch winner {
+        case .left: label += " \(leftName) wins."
+        case .right: label += " \(rightName) wins."
+        case .tie: label += " Tie."
+        case .notContested: break
+        }
+        return label
+    }
 }
 
 /// A head-to-head comparison of two vehicles: a table of metrics with a

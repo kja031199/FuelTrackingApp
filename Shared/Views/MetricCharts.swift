@@ -42,6 +42,8 @@ struct MetricLineChart: View {
                 .foregroundStyle(metric.color)
                 .lineStyle(StrokeStyle(lineWidth: 2))
                 .interpolationMethod(.monotone)
+                .accessibilityLabel(point.date.formatted(.dateTime.month(.abbreviated).day()))
+                .accessibilityValue(valueLabel(point.value))
 
                 if !compact {
                     PointMark(
@@ -50,6 +52,7 @@ struct MetricLineChart: View {
                     )
                     .foregroundStyle(metric.color)
                     .symbolSize(selectedPoint?.id == point.id ? 100 : 36)
+                    .accessibilityHidden(true)
                 }
             }
 
@@ -62,6 +65,7 @@ struct MetricLineChart: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
+                    .accessibilityHidden(true)
             }
 
             if let selectedPoint {
@@ -102,6 +106,8 @@ struct MonthlyBarChart: View {
                 topLeadingRadius: compact ? 2 : 4,
                 topTrailingRadius: compact ? 2 : 4
             ))
+            .accessibilityLabel(total.month.formatted(.dateTime.month(.wide).year()))
+            .accessibilityValue((yAxisLabel ?? { $0.formatted() })(total[keyPath: value]))
         }
         .chartXAxis {
             AxisMarks(values: .stride(by: .month)) { _ in

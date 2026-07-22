@@ -53,6 +53,7 @@ struct VehiclesView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityLabel("Add Vehicle")
                 }
             }
             .sheet(isPresented: $showingAddSheet) {
@@ -93,6 +94,7 @@ struct VehiclesView: View {
             if vehicle.id.uuidString == selectedVehicleID {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.tint)
+                    .accessibilityLabel("Currently selected vehicle")
             }
         }
         .contentShape(Rectangle())

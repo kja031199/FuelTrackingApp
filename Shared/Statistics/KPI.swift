@@ -24,6 +24,14 @@ struct KPI: Identifiable {
         self.icon = icon
         self.metric = metric
     }
+
+    /// One spoken phrase combining title, value, and detail, so VoiceOver
+    /// reads the card as a single coherent stat rather than three fragments.
+    var accessibilityLabel: String {
+        var parts = [title, value ?? "no data yet"]
+        if let detail { parts.append(detail) }
+        return parts.joined(separator: ", ")
+    }
 }
 
 extension FuelStatistics {

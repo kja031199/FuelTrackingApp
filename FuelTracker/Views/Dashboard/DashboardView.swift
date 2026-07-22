@@ -80,6 +80,7 @@ struct DashboardView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityLabel("Add Fill-Up")
                     .disabled(selectedVehicle == nil)
                 }
             }

@@ -17,6 +17,12 @@ struct WeekdayPriceChart: View {
             )
             .foregroundStyle(color(for: day))
             .symbolSize(day.weekday == cheapestWeekday ? 160 : 90)
+            .accessibilityLabel(day.symbol)
+            .accessibilityValue(
+                day.weekday == cheapestWeekday
+                    ? "\(Format.fuelPrice(day.averagePrice)), cheapest day"
+                    : Format.fuelPrice(day.averagePrice)
+            )
         }
         .chartYScale(domain: .automatic(includesZero: false))
         .chartYAxis {
