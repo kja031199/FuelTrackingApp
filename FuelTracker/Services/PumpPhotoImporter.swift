@@ -41,7 +41,11 @@ enum PumpPhotoImporter {
             }
         }
 
-        if let cgImage = CGImageSourceCreateImageAtIndex(source, 0, nil) {
+        // Decode to a bounded size for OCR. Reading the full image via
+        // CGImageSourceCreateImageAtIndex would decompress an attacker-sized
+        // photo in full (a decompression-bomb DoS); 4096px is far more than
+        // Vision needs to read a pump or receipt and caps the memory cost.
+        if let cgImage = ReceiptImage.boundedThumbnail(from: source, maxPixelSize: 4096) {
             result.ocrLines = recognizeText(in: cgImage)
             result.reading = PumpScanParser.parse(result.ocrLines)
         }
