@@ -9,6 +9,31 @@ For the security posture, read [`docs/security-review.md`](docs/security-review.
 An agent-facing quick reference lives in [`CLAUDE.md`](CLAUDE.md); it overlaps
 with this file but is written as a terse operating manual.
 
+## The workflow for every change
+
+Every piece of work — feature, fix, or refactor — runs through four phases, in
+order. They're framed as roles so it's clear which hat you're wearing; on a solo
+change you wear all four yourself. Skip a step only when it genuinely doesn't
+apply (e.g. there are no tests to write for a docs-only change).
+
+1. **Lead Software Engineer** — Take the request. If it maps to a repo issue,
+   read the issue and its linked docs before touching code. Plan and reason
+   through the change (files, invariants, blast radius) up front. Create a new
+   branch off the latest `main`, then implement.
+2. **Lead QA Developer (author tests)** — Add happy-path tests, then add
+   non-happy-path tests (zero/negative/non-finite values, duplicates, clock
+   skew, OCR noise, oversized/garbage input). See the testing bar below.
+3. **Senior Technical Writer** — Update this file and
+   [`CLAUDE.md`](CLAUDE.md) to reflect the new or changed behavior and any new
+   conventions or gotchas.
+4. **Lead QA Developer (final review)** — Review the tests against the diff to
+   confirm they cover the new, updated, and changed code as fully as possible.
+   Then compare the actual changes against the originating issue and the
+   request, and confirm the work matches what was asked — flag any gaps.
+
+Open the PR (when asked) noting that the suite wasn't executed in CI, so a
+reviewer should run **⌘U** before merge.
+
 ## The rules that matter
 
 ### 1. All fill-up writes go through one validation chokepoint
