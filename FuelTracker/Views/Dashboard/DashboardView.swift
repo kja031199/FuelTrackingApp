@@ -2,25 +2,6 @@ import SwiftUI
 import SwiftData
 import Charts
 
-enum DashboardTimeRange: String, CaseIterable, Identifiable {
-    case threeMonths = "3M"
-    case sixMonths = "6M"
-    case year = "1Y"
-    case all = "All"
-
-    var id: String { rawValue }
-
-    var cutoff: Date? {
-        let calendar = Calendar.current
-        switch self {
-        case .threeMonths: return calendar.date(byAdding: .month, value: -3, to: .now)
-        case .sixMonths: return calendar.date(byAdding: .month, value: -6, to: .now)
-        case .year: return calendar.date(byAdding: .year, value: -1, to: .now)
-        case .all: return nil
-        }
-    }
-}
-
 struct DashboardView: View {
     let selectedVehicle: Vehicle?
     let vehicles: [Vehicle]
