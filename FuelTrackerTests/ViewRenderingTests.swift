@@ -10,8 +10,15 @@ import UIKit
 /// Hosts a view in a real window and forces layout, so the view's body —
 /// including chart content and empty-state branches — actually executes.
 @MainActor
-private func render(_ view: some View, container: ModelContainer, units: UnitSettings = UnitSettings()) {
-    let hosting = UIHostingController(rootView: AnyView(view.modelContainer(container).environment(units)))
+private func render(
+    _ view: some View,
+    container: ModelContainer,
+    units: UnitSettings = UnitSettings(),
+    privacy: PrivacySettings = PrivacySettings()
+) {
+    let hosting = UIHostingController(
+        rootView: AnyView(view.modelContainer(container).environment(units).environment(privacy))
+    )
     let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
     window.rootViewController = hosting
     window.makeKeyAndVisible()

@@ -212,6 +212,54 @@ struct FillUpImportModelTests {
         #expect(!outcome.didFill)
     }
 
+    // MARK: - Location capture opt-out
+
+    @Test func captureOffDropsCoordinatesAndGPSStationFromAPumpImport() {
+        let form = FillUpFormModel()
+        let station = DetectedStation(name: "Shell", latitude: 37.5, longitude: -122.5)
+        let outcome = FillUpImportModel.applyPumpReading(
+            pumpImport(gallons: 8.712, price: 3.499, latitude: 37.0, longitude: -122.0),
+            to: form, previousOdometer: nil, typicalMilesPerFill: nil,
+            resolvedStation: station, captureLocation: false
+        )
+        // No location stored, no location-derived station, and neither shows up
+        // in the summary.
+        #expect(form.latitude == nil)
+        #expect(form.longitude == nil)
+        #expect(form.station.isEmpty)
+        #expect(outcome.summary?.contains("Shell") != true)
+        #expect(outcome.summary?.contains("location saved") != true)
+        // The fuel numbers still import — only location is suppressed.
+        #expect(form.gallons == 8.712)
+        #expect(form.pricePerGallon == 3.499)
+    }
+
+    @Test func captureOffKeepsAPrintedReceiptStationButDropsCoordinates() {
+        // A station printed on the receipt is OCR text, not location tracking,
+        // so it survives the opt-out; the coordinates do not.
+        let form = FillUpFormModel()
+        let outcome = FillUpImportModel.applyReceipt(
+            receiptImport(gallons: 10, price: 3.2, stationName: "Chevron", latitude: 40, longitude: -100),
+            to: form, resolvedStation: nil, captureLocation: false
+        )
+        #expect(form.station == "Chevron")
+        #expect(form.latitude == nil)
+        #expect(form.longitude == nil)
+        #expect(outcome.summary?.contains("Chevron") == true)
+    }
+
+    @Test func captureOffDropsAGPSOnlyReceiptStation() {
+        let form = FillUpFormModel()
+        let gps = DetectedStation(name: "Costco", latitude: 47.6, longitude: -122.3)
+        _ = FillUpImportModel.applyReceipt(
+            receiptImport(gallons: 10, price: 3.2, latitude: 47.0, longitude: -122.0),
+            to: form, resolvedStation: gps, captureLocation: false
+        )
+        #expect(form.station.isEmpty)
+        #expect(form.latitude == nil)
+        #expect(form.longitude == nil)
+    }
+
     // MARK: - Pump-vs-receipt detection
 
     @Test func aPrintedDateOrStationMarksItAReceipt() {

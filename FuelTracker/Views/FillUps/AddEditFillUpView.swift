@@ -11,6 +11,7 @@ struct AddEditFillUpView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(UnitSettings.self) private var unitSettings: UnitSettings?
+    @Environment(PrivacySettings.self) private var privacy: PrivacySettings?
 
     @Query(sort: \Vehicle.createdAt) private var vehicles: [Vehicle]
 
@@ -34,6 +35,10 @@ struct AddEditFillUpView: View {
     }
 
     private var units: UnitPreferences { unitSettings?.preferences ?? .us }
+
+    /// Whether the user allows recording where a fill-up happened. Defaults to
+    /// on when no setting is injected (previews/tests), matching the app root.
+    private var captureLocation: Bool { privacy?.locationCaptureEnabled ?? true }
 
     // The form stores canonical miles/gallons/price-per-gallon; these bind the
     // fields to the user's units, converting on the way in and out so the
@@ -168,18 +173,21 @@ struct AddEditFillUpView: View {
 
                     HStack {
                         TextField("Gas Station (optional)", text: $form.station)
-                        Button {
-                            Task { await importer.detectStation(into: form) }
-                        } label: {
-                            if importer.isLocatingStation {
-                                ProgressView()
-                            } else {
-                                Image(systemName: "location.fill")
+                        // Only offer location-based detection when capture is on.
+                        if captureLocation {
+                            Button {
+                                Task { await importer.detectStation(into: form, captureLocation: captureLocation) }
+                            } label: {
+                                if importer.isLocatingStation {
+                                    ProgressView()
+                                } else {
+                                    Image(systemName: "location.fill")
+                                }
                             }
+                            .buttonStyle(.borderless)
+                            .disabled(importer.isLocatingStation)
+                            .accessibilityLabel("Detect gas station from my location")
                         }
-                        .buttonStyle(.borderless)
-                        .disabled(importer.isLocatingStation)
-                        .accessibilityLabel("Detect gas station from my location")
                     }
                     .listRowBackground(highlightBackground(for: .station))
 
@@ -251,7 +259,8 @@ struct AddEditFillUpView: View {
                         data: data,
                         into: form,
                         previousOdometer: context.previous,
-                        typicalMilesPerFill: context.typical
+                        typicalMilesPerFill: context.typical,
+                        captureLocation: captureLocation
                     )
                 }
             }
@@ -274,9 +283,10 @@ struct AddEditFillUpView: View {
                     selectedVehicleID = defaultVehicle?.id ?? vehicles.first?.id
                 }
                 // Auto-fill the station for new entries once the user has
-                // granted location access (the button asks the first time).
-                if !form.isEditing, form.station.isEmpty, importer.isStationAuthorized {
-                    Task { await importer.detectStation(into: form) }
+                // granted location access (the button asks the first time) —
+                // but only if they haven't opted out of location capture.
+                if !form.isEditing, form.station.isEmpty, captureLocation, importer.isStationAuthorized {
+                    Task { await importer.detectStation(into: form, captureLocation: captureLocation) }
                 }
             }
         }
