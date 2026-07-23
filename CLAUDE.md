@@ -49,6 +49,40 @@ Consequences:
 - Balance checks catch mismatched delimiters, not type errors. Read the code you
   write as if compiling it in your head.
 
+## The workflow — follow this for every change
+
+Every piece of work runs through four role phases, in order. Wear each hat
+deliberately; don't collapse them. "If applicable" means skip a step only when
+it genuinely can't apply (e.g. no tests for a docs-only change), not when it's
+merely inconvenient.
+
+**1. Lead Software Engineer**
+1. Receive the request.
+2. If it maps to a repo issue, find it and read the issue and its linked docs
+   through — don't reconstruct the requirements from memory.
+3. Plan and reason through the change *before* editing: what files, what
+   invariants are in play, what could break.
+4. Create a new branch (restart from the latest `main` after a merge).
+5. Make the changes.
+
+**2. Lead QA Developer (author tests)**
+1. Add happy-path test cases in the same branch.
+2. Add non-happy-path cases: zero/negative/non-finite values, duplicates, clock
+   skew, OCR noise, oversized/garbage payloads — the hostile-input bar.
+
+**3. Senior Technical Writer**
+1. Update `CONTRIBUTING.md` for the new/changed behavior and conventions.
+2. Update `CLAUDE.md` for the same (invariants, gotchas, pointers).
+
+**4. Lead QA Developer (final review)**
+1. Review the tests against the diff — confirm they cover the new, updated, and
+   otherwise changed code as fully as possible.
+2. Compare the actual changes against the originating issue **and** the user's
+   request, and confirm the work matches what was asked. Note any gaps.
+
+Then run the balance check on every touched file, and open the PR (only when
+asked) with a note that the suite was not run here.
+
 ## Hard invariants — do not break these
 
 These are load-bearing; breaking one stops a target compiling or re-opens a
