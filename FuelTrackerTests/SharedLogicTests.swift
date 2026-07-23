@@ -358,8 +358,9 @@ struct DashboardTimeRangeTests {
 
 @MainActor
 struct ModelContainerFactoryTests {
-    @Test func schemaContainsBothModels() {
-        #expect(ModelContainerFactory.schema.entities.count == 2)
+    @Test func schemaContainsEveryModel() {
+        let names = Set(ModelContainerFactory.schema.entities.map(\.name))
+        #expect(names == ["Vehicle", "FuelEntry", "PendingFillUp"])
     }
 
     @Test func inMemoryContainerStoresAndFetches() throws {
