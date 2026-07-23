@@ -117,6 +117,32 @@ control over it (Settings → Location):
   irreversible action in Settings. This backs the App Store data-deletion
   expectation.
 
+## At-rest protection & app lock
+
+Two on-device protections for the fuel log (location history + receipt photos):
+
+- **Data protection on the store.** `StoreProtection.secureStore(at:)` applies
+  `FileProtectionType.completeUntilFirstUserAuthentication` to the SwiftData
+  store file and its journal sidecars (and, best-effort, the external-storage
+  blobs) right after the container opens, so the data is encrypted at rest and
+  unreadable off a locked/stolen device until its first post-boot unlock. That
+  class is chosen (over `.complete`) so background access keeps working after
+  first unlock — important once CloudKit sync or a widget is enabled.
+  - **Limitation, by design.** This covers the files present when the store
+    opens, which is the whole structured record store (odometer, coordinates,
+    stations, history). The comprehensive, always-on guarantee for files
+    written *later* (e.g. a receipt-image blob added mid-session) comes from the
+    `com.apple.developer.default-data-protection` entitlement. That entitlement
+    is kept out of the shipped build to preserve free-Apple-ID compatibility
+    (same posture as iCloud sync); enabling it is the documented upgrade path.
+- **Optional app lock.** `AppLock` gates app entry behind Face ID / Touch ID /
+  passcode (`.deviceOwnerAuthentication`, so it falls back to the passcode).
+  Off by default; toggled in Settings → Security. It re-locks whenever the app
+  leaves the foreground, and won't engage if the device has no biometric or
+  passcode set. The authentication sits behind a `DeviceAuthenticating` protocol
+  so the lock's state machine is unit-tested without hardware. The lock is a UI
+  gate on top of the data-protection class above — not encryption on its own.
+
 ## Tests
 
 `FuelTrackerTests/SecurityHardeningTests.swift` covers the fixes: the parser

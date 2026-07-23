@@ -14,10 +14,16 @@ private func render(
     _ view: some View,
     container: ModelContainer,
     units: UnitSettings = UnitSettings(),
-    privacy: PrivacySettings = PrivacySettings()
+    privacy: PrivacySettings = PrivacySettings(),
+    appLock: AppLock = AppLock(authenticator: BiometricAuthenticator())
 ) {
     let hosting = UIHostingController(
-        rootView: AnyView(view.modelContainer(container).environment(units).environment(privacy))
+        rootView: AnyView(
+            view.modelContainer(container)
+                .environment(units)
+                .environment(privacy)
+                .environment(appLock)
+        )
     )
     let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
     window.rootViewController = hosting
@@ -372,6 +378,15 @@ struct UnitsRenderingTests {
         // The entry form's converting bindings must lay out with metric labels.
         let (container, vehicle) = Scenario.vehicleOnly()
         render(AddEditFillUpView(defaultVehicle: vehicle), container: container, units: metricUnits())
+    }
+
+    @Test func lockScreenCoversTheAppWhenLocked() {
+        // Enabled + a capable device that declines the auto-unlock prompt, so
+        // the gate's lock overlay stays up and its body executes.
+        let defaults = UserDefaults(suiteName: "test.render.lock.\(UUID().uuidString)")!
+        defaults.set(true, forKey: "privacy.appLockEnabled")
+        let lock = AppLock(defaults: defaults, authenticator: StubAuthenticator(canAuthenticate: true, result: false))
+        render(ContentView().modifier(AppLockGate()), container: Scenario.empty(), appLock: lock)
     }
 }
 

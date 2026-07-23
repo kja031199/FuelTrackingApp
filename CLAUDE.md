@@ -25,8 +25,8 @@ user's private iCloud.
   `WeekdayPricePattern`, `KPI`.
 - `Shared/Scanning/` — pure OCR-text→value parsers (pump, odometer, receipt).
 - `Shared/Support/` — formatters, `FillUpFormModel`, `ModelContainerFactory`,
-  the units system (`MeasurementUnits`, `UnitSettings`), and privacy
-  (`PrivacySettings`, `LocationPrivacy`).
+  the units system (`MeasurementUnits`, `UnitSettings`), and privacy/security
+  (`PrivacySettings`, `LocationPrivacy`, `StoreProtection`, `AppLock`).
 - `FuelTracker/` — the iPhone app (thin views) + iOS-only `Scanning/` importers
   and `Services/` (Vision, ImageIO, CoreLocation/MapKit, PhotosUI).
 - `FuelTrackerWatch/` — the watch app (thin views).
@@ -194,6 +194,16 @@ directory. Respect the `Shared/` framework rule when choosing where it goes.
   *printed* station name still applies. `LocationPrivacy.purgeSavedLocations(in:)`
   nils coordinates on every `FuelEntry` **and** `PendingFillUp`. If you add a new
   location source, gate it on this flag and clear it in the purge.
+- At-rest protection is best-effort **without** an entitlement:
+  `StoreProtection.secureStore(at:)` sets `.completeUntilFirstUserAuthentication`
+  on the store files after the container opens. Comprehensive coverage of
+  future blobs needs the `default-data-protection` entitlement, deliberately
+  deferred to keep the free-account build working (like iCloud). The optional
+  **`AppLock`** (Settings → Security, off by default) gates entry on Face ID /
+  passcode via a `DeviceAuthenticating` protocol — keep `LAContext` behind that
+  protocol so the state machine stays testable, and inject `AppLock` wherever
+  `SettingsView` or the `AppLockGate` is hosted (app root, previews, render
+  harness).
 
 ## Before you open a PR
 

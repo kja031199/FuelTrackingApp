@@ -79,4 +79,5 @@ struct VehiclePickerMenu: View {
         .modelContainer(PreviewData.container)
         .environment(UnitSettings())
         .environment(PrivacySettings())
+        .environment(AppLock(authenticator: BiometricAuthenticator()))
 }
