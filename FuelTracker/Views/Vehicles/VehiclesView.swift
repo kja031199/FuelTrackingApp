@@ -4,11 +4,14 @@ import SwiftData
 struct VehiclesView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Vehicle.createdAt) private var vehicles: [Vehicle]
+    @Query(sort: \PendingFillUp.submittedAt, order: .reverse) private var pendingSubmissions: [PendingFillUp]
     @Binding var selectedVehicleID: String
 
     @State private var showingAddSheet = false
     @State private var vehicleBeingEdited: Vehicle?
     @State private var showingShowdown = false
+    @State private var showingSubmissions = false
+    @State private var submittingForVehicle: Vehicle?
 
     var body: some View {
         NavigationStack {
@@ -31,6 +34,14 @@ struct VehiclesView: View {
                                 vehicleRow(vehicle)
                             }
                             .buttonStyle(.plain)
+                            .swipeActions(edge: .leading) {
+                                Button {
+                                    submittingForVehicle = vehicle
+                                } label: {
+                                    Label("Fill-Up Link", systemImage: "link")
+                                }
+                                .tint(.blue)
+                            }
                         }
                         .onDelete(perform: deleteVehicles)
                     }
@@ -44,6 +55,16 @@ struct VehiclesView: View {
                             showingShowdown = true
                         } label: {
                             Label("Compare", systemImage: "car.2")
+                        }
+                    }
+                }
+                if !pendingSubmissions.isEmpty {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            showingSubmissions = true
+                        } label: {
+                            Label("Review \(pendingSubmissions.count) submission\(pendingSubmissions.count == 1 ? "" : "s")",
+                                  systemImage: "tray.full")
                         }
                     }
                 }
@@ -64,6 +85,12 @@ struct VehiclesView: View {
             }
             .sheet(isPresented: $showingShowdown) {
                 ShowdownView(vehicles: vehicles)
+            }
+            .sheet(isPresented: $showingSubmissions) {
+                PendingSubmissionsView()
+            }
+            .sheet(item: $submittingForVehicle) { vehicle in
+                SubmitFillUpView(vehicle: vehicle)
             }
         }
     }

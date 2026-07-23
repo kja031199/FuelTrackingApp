@@ -18,7 +18,7 @@ models, statistics, parsing, and shared form logic.
 
 ```
 Models        Vehicle, FuelEntry, FuelGrade,         (SwiftData @Model
-              FuelEntryDraft                          + the write chokepoint)
+              FuelEntryDraft, PendingFillUp           + the write chokepoint)
    ▲
 Domain        FuelStatistics, VehicleShowdown,        (pure value logic)
               WeekdayPricePattern, KPI,
@@ -94,7 +94,7 @@ FuelTracker/         iPhone app (thin view layer)
 ├── Scanning/        iOS-only: photo importers, image sanitizing, and
 │                    FillUpImportModel (import/scan/station orchestration)
 ├── Services/        iOS-only: StationLocator
-└── Views/           Dashboard, FillUps, Vehicles
+└── Views/           Dashboard, FillUps, Vehicles, Submissions
 
 FuelTrackerWatch/    Apple Watch app (thin view layer)
 FuelTrackerTests/    Unit + rendering tests

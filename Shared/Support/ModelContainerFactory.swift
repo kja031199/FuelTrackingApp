@@ -6,7 +6,7 @@ enum ModelContainerFactory {
     private static let log = Logger(subsystem: "FuelTracker", category: "Persistence")
 
     static var schema: Schema {
-        Schema([Vehicle.self, FuelEntry.self])
+        Schema([Vehicle.self, FuelEntry.self, PendingFillUp.self])
     }
 
     /// Syncs through the private CloudKit database of the container declared
