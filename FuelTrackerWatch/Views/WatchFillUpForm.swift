@@ -7,19 +7,44 @@ import WatchKit
 /// total cost is calculated live from gallons × price per gallon.
 struct WatchFillUpForm: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(UnitSettings.self) private var unitSettings: UnitSettings?
     let vehicle: Vehicle?
 
     @State private var form = FillUpFormModel()
     @State private var justSaved = false
+
+    private var units: UnitPreferences { unitSettings?.preferences ?? .us }
+
+    // Bind to the user's units; the form keeps canonical values.
+    private var odometerField: Binding<Double?> {
+        Binding(
+            get: { form.odometer.map { units.distance.fromMiles($0) } },
+            set: { form.odometer = $0.map { units.distance.toMiles($0) } }
+        )
+    }
+
+    private var gallonsField: Binding<Double?> {
+        Binding(
+            get: { form.gallons.map { units.volume.fromGallons($0) } },
+            set: { form.gallons = $0.map { units.volume.toGallons($0) } }
+        )
+    }
+
+    private var priceField: Binding<Double?> {
+        Binding(
+            get: { form.pricePerGallon.map { $0 / units.volume.fromGallons(1) } },
+            set: { form.pricePerGallon = $0.map { $0 * units.volume.fromGallons(1) } }
+        )
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("New Fill-Up")
                 .font(.headline)
 
-            numberField("Odometer (mi)", value: $form.odometer)
-            numberField("Gallons", value: $form.gallons)
-            numberField("Price / Gallon", value: $form.pricePerGallon)
+            numberField("Odometer (\(units.distance.abbreviation))", value: odometerField)
+            numberField(units.volume.name, value: gallonsField)
+            numberField("Price / \(units.volume.singularNoun)", value: priceField)
 
             HStack {
                 Text("Total")

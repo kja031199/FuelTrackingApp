@@ -8,6 +8,16 @@ struct DateValuePoint: Identifiable {
     let value: Double
 }
 
+extension Array where Element == DateValuePoint {
+    /// The series with each value passed through `transform`, preserving ids
+    /// and dates. Used to convert a canonical series (e.g. MPG) into a
+    /// non-linear display unit (e.g. L/100km), where relabeling the axis isn't
+    /// enough because the curve's shape changes.
+    func mapValues(_ transform: (Double) -> Double) -> [DateValuePoint] {
+        map { DateValuePoint(id: $0.id, date: $0.date, value: transform($0.value)) }
+    }
+}
+
 /// Line chart for one metric over time, shared by both platforms.
 ///
 /// Full mode (iPhone) shows point marks, axes, an optional dashed average

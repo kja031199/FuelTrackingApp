@@ -74,7 +74,20 @@ in the README, the way iCloud sync is handled.
 UIKit, Vision, ImageIO, or MapKit. Pure text→value parsers live in `Shared/`;
 the importers that produce that text from a photo are iOS-only (`FuelTracker/`).
 
-### 5. Untrusted images enter through one bounded decode
+### 5. Measurements are stored canonical and converted only at the edge
+
+Every measurement is stored in one canonical unit — **miles, US gallons, US
+MPG** — regardless of what the user sees. The unit preference (`UnitSettings`,
+an `@Observable` in the SwiftUI environment) and the conversions
+(`MeasurementUnits`) live entirely at the display and entry boundary: `Format`'s
+unit-aware helpers convert on the way out, and the forms' converting bindings
+convert on the way in. The model and `FuelStatistics` stay unit-agnostic — never
+convert inside them. Unit-parameterized APIs (`dashboardKPIs(units:)`,
+`VehicleShowdown`, `weekdayPriceInsight(units:)`) default to `.us`, which
+reproduces the canonical output. OCR scanning is US-only by design; manual entry
+supports every unit.
+
+### 6. Untrusted images enter through one bounded decode
 
 Photos are attacker-controllable. All image ingestion goes through `ReceiptImage`
 / the bounded ImageIO thumbnail path — never a raw `UIImage(data:)`, which is a

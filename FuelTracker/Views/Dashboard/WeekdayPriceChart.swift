@@ -8,6 +8,7 @@ import Charts
 struct WeekdayPriceChart: View {
     let prices: [WeekdayPrice]
     let cheapestWeekday: Int?
+    var units: UnitPreferences = .us
 
     var body: some View {
         Chart(prices) { day in
@@ -20,8 +21,8 @@ struct WeekdayPriceChart: View {
             .accessibilityLabel(day.symbol)
             .accessibilityValue(
                 day.weekday == cheapestWeekday
-                    ? "\(Format.fuelPrice(day.averagePrice)), cheapest day"
-                    : Format.fuelPrice(day.averagePrice)
+                    ? "\(Format.fuelPrice(day.averagePrice, per: units.volume)), cheapest day"
+                    : Format.fuelPrice(day.averagePrice, per: units.volume)
             )
         }
         .chartYScale(domain: .automatic(includesZero: false))
@@ -30,7 +31,7 @@ struct WeekdayPriceChart: View {
                 AxisGridLine()
                 AxisValueLabel {
                     if let price = value.as(Double.self) {
-                        Text(Format.plainCurrency(price))
+                        Text(Format.plainCurrency(price / units.volume.fromGallons(1)))
                     }
                 }
             }

@@ -24,6 +24,8 @@ user's private iCloud.
 - `Shared/Statistics/` — `FuelStatistics` (MPG/cost math), `VehicleShowdown`,
   `WeekdayPricePattern`, `KPI`.
 - `Shared/Scanning/` — pure OCR-text→value parsers (pump, odometer, receipt).
+- `Shared/Support/` — formatters, `FillUpFormModel`, `ModelContainerFactory`,
+  and the units system (`MeasurementUnits`, `UnitSettings`).
 - `FuelTracker/` — the iPhone app (thin views) + iOS-only `Scanning/` importers
   and `Services/` (Vision, ImageIO, CoreLocation/MapKit, PhotosUI).
 - `FuelTrackerWatch/` — the watch app (thin views).
@@ -158,9 +160,29 @@ directory. Respect the `Shared/` framework rule when choosing where it goes.
 - Odometer/number formatting rounding can differ across iOS versions
   (banker's vs half-away) — assert unambiguous values, or accept both roundings
   for an exact midpoint.
-- Currency is locale-aware (`Format.currency`), but volume/distance/economy are
-  currently hard-coded US units. A units preference is tracked as a separate
-  issue; don't assume it exists yet.
+- Currency is locale-aware (`Format.currency`). Volume/distance/economy honor a
+  **user unit preference** (`UnitSettings`, an `@Observable` in the SwiftUI
+  environment; enums + conversions in `MeasurementUnits`). **Storage stays
+  canonical — miles, US gallons, US MPG** — and conversion happens only at the
+  display/entry boundary, so the model and `FuelStatistics` never change with
+  the unit choice. Threading rules:
+  - Views read `@Environment(UnitSettings.self) private var: UnitSettings?` and
+    fall back to `.us` when absent, so previews and the render harness don't
+    have to inject it (`SettingsView` is the exception — it binds, so it needs
+    a non-optional one).
+  - `Format` has unit-aware helpers (`volume` / `distance` / `economy` /
+    `fuelPrice(per:)` / `costPerDistance`) that take a canonical value and a
+    target unit. The KPI builders, `VehicleShowdown`, and `weekdayPriceInsight`
+    take a `UnitPreferences` **defaulting to `.us`**, which reproduces the
+    canonical output byte-for-byte (existing tests rely on this).
+  - Forms bind through converting `Binding`s so stored values stay canonical.
+  - Charts **relabel** for linear metrics (distance/price) but **convert the
+    series** for economy — L/100km is the reciprocal of MPG, so its curve shape
+    changes.
+  - **OCR scanning (pump + odometer) is US-only by design** — the parsers are
+    tuned to US pumps. Manual entry supports every unit.
+  - The watch keeps its own preference in its local `UserDefaults` (syncing it
+    with the phone needs a shared App Group, deferred with iCloud).
 - `Winner.notContested` (not `.none`) is the showdown "tie" case — the rename
   avoided an optional-chaining footgun (`row("x")?.winner == .none`).
 

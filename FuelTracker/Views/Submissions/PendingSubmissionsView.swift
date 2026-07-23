@@ -7,9 +7,12 @@ import SwiftData
 struct PendingSubmissionsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(UnitSettings.self) private var unitSettings: UnitSettings?
 
     @Query(sort: \PendingFillUp.submittedAt, order: .reverse) private var submissions: [PendingFillUp]
     @Query private var vehicles: [Vehicle]
+
+    private var units: UnitPreferences { unitSettings?.preferences ?? .us }
 
     var body: some View {
         NavigationStack {
@@ -26,6 +29,7 @@ struct PendingSubmissionsView: View {
                             SubmissionReviewRow(
                                 submission: submission,
                                 vehicle: vehicle(for: submission),
+                                units: units,
                                 approve: { approve(submission) },
                                 dismissSubmission: { modelContext.delete(submission) }
                             )
@@ -58,6 +62,7 @@ struct PendingSubmissionsView: View {
 private struct SubmissionReviewRow: View {
     let submission: PendingFillUp
     let vehicle: Vehicle?
+    var units: UnitPreferences = .us
     let approve: () -> Void
     let dismissSubmission: () -> Void
 
@@ -113,8 +118,8 @@ private struct SubmissionReviewRow: View {
     private var detailGrid: some View {
         VStack(alignment: .leading, spacing: 4) {
             detail("Date", submission.date.formatted(date: .abbreviated, time: .omitted))
-            detail("Odometer", "\(Format.odometer(submission.odometer)) mi")
-            detail("Fuel", "\(Format.gallons(submission.gallons)) gal @ \(Format.fuelPrice(submission.pricePerGallon)) = \(Format.currency(submission.totalCost))")
+            detail("Odometer", Format.distance(submission.odometer, in: units.distance, withUnit: true))
+            detail("Fuel", "\(Format.volume(submission.gallons, in: units.volume, withUnit: true)) @ \(Format.fuelPrice(submission.pricePerGallon, per: units.volume)) = \(Format.currency(submission.totalCost))")
             if !submission.station.isEmpty {
                 detail("Station", submission.station)
             }

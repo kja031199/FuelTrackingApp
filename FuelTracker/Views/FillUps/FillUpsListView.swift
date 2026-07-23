@@ -11,6 +11,9 @@ struct FillUpsListView: View {
 
     @State private var showingAddSheet = false
     @State private var entryBeingEdited: FuelEntry?
+    @Environment(UnitSettings.self) private var unitSettings: UnitSettings?
+
+    private var units: UnitPreferences { unitSettings?.preferences ?? .us }
 
     private var entries: [FuelEntry] {
         (selectedVehicle?.fillUps ?? []).sorted { $0.date > $1.date }
@@ -46,7 +49,8 @@ struct FillUpsListView: View {
                                 FillUpRow(
                                     entry: entry,
                                     mpg: statistics.mpg(for: entry),
-                                    isSuspect: statistics.isSuspectSegment(for: entry)
+                                    isSuspect: statistics.isSuspectSegment(for: entry),
+                                    units: units
                                 )
                             }
                             .buttonStyle(.plain)
@@ -95,6 +99,7 @@ struct FillUpRow: View {
     let entry: FuelEntry
     let mpg: Double?
     var isSuspect = false
+    var units: UnitPreferences = .us
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -108,18 +113,18 @@ struct FillUpRow: View {
 
             HStack(spacing: 12) {
                 Label(
-                    "\(Format.gallons(entry.gallons)) gal @ \(Format.fuelPrice(entry.pricePerGallon))",
+                    "\(Format.volume(entry.gallons, in: units.volume, withUnit: true)) @ \(Format.fuelPrice(entry.pricePerGallon, per: units.volume))",
                     systemImage: "fuelpump"
                 )
                 Spacer()
-                Label("\(Format.odometer(entry.odometer)) mi", systemImage: "gauge.open.with.lines.needle.33percent")
+                Label(Format.distance(entry.odometer, in: units.distance, withUnit: true), systemImage: "gauge.open.with.lines.needle.33percent")
             }
             .font(.caption)
             .foregroundStyle(.secondary)
 
             HStack(spacing: 8) {
-                if let mpg {
-                    Text("\(Format.mpg(mpg)) MPG")
+                if let mpg, let economyText = Format.economy(mpg, in: units.economy) {
+                    Text("\(economyText) \(units.economy.abbreviation)")
                         .font(.caption.weight(.semibold))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)

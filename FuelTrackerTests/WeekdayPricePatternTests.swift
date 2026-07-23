@@ -59,7 +59,7 @@ struct WeekdayPricePatternTests {
             makeEntry(on: day(2025, 1, 3), price: 3.31),   // Fri
             makeEntry(on: day(2025, 1, 10), price: 3.31),  // Fri
         ])
-        let insight = try #require(statistics.weekdayPriceInsight)
+        let insight = try #require(statistics.weekdayPriceInsight())
 
         let names = DateFormatter().weekdaySymbols!     // 0=Sun ... 6=Sat
         let tuesday = names[2]
@@ -79,7 +79,7 @@ struct WeekdayPricePatternTests {
             makeEntry(on: day(2025, 1, 7), price: 3.20),   // Tue
             makeEntry(on: day(2025, 1, 3), price: 3.31),   // Fri
         ])
-        #expect(statistics.weekdayPriceInsight == nil)
+        #expect(statistics.weekdayPriceInsight() == nil)
     }
 
     @Test func insightIsNilWithASingleWeekday() {
@@ -91,7 +91,7 @@ struct WeekdayPricePatternTests {
             makeEntry(on: day(2025, 1, 28), price: 3.40),
         ])
         #expect(statistics.weekdayPrices.count == 1)
-        #expect(statistics.weekdayPriceInsight == nil)
+        #expect(statistics.weekdayPriceInsight() == nil)
     }
 
     @Test func insightIsNilWhenTheSpreadIsUnderOneCent() {
@@ -102,7 +102,7 @@ struct WeekdayPricePatternTests {
             makeEntry(on: day(2025, 1, 3), price: 3.205),   // Fri
             makeEntry(on: day(2025, 1, 10), price: 3.205),  // Fri
         ])
-        #expect(statistics.weekdayPriceInsight == nil)
+        #expect(statistics.weekdayPriceInsight() == nil)
     }
 
     // MARK: - Degenerate & hostile
@@ -112,7 +112,7 @@ struct WeekdayPricePatternTests {
         #expect(statistics.weekdayPrices.isEmpty)
         #expect(statistics.cheapestWeekday == nil)
         #expect(statistics.priciestWeekday == nil)
-        #expect(statistics.weekdayPriceInsight == nil)
+        #expect(statistics.weekdayPriceInsight() == nil)
     }
 
     @Test func aSingleFillAveragesToItsOwnPrice() throws {
@@ -123,7 +123,7 @@ struct WeekdayPricePatternTests {
         #expect(tuesday.weekday == 3)
         #expect(abs(tuesday.averagePrice - 3.49) < 0.0001)
         #expect(tuesday.fillUpCount == 1)
-        #expect(statistics.weekdayPriceInsight == nil)
+        #expect(statistics.weekdayPriceInsight() == nil)
     }
 
     @Test func patternIsIndependentOfInputOrder() {
@@ -149,6 +149,6 @@ struct WeekdayPricePatternTests {
             makeEntry(on: day(2025, 1, 10), price: 3.25),  // Fri
         ])
         #expect(statistics.weekdayPrices.count == 2)
-        #expect(statistics.weekdayPriceInsight == nil)
+        #expect(statistics.weekdayPriceInsight() == nil)
     }
 }

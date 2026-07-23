@@ -43,7 +43,7 @@ struct VehicleShowdown {
     let rightMPGSeries: [DateValuePoint]
     let rows: [ShowdownRow]
 
-    init(leftName: String, leftEntries: [FuelEntry], rightName: String, rightEntries: [FuelEntry]) {
+    init(leftName: String, leftEntries: [FuelEntry], rightName: String, rightEntries: [FuelEntry], units: UnitPreferences = .us) {
         self.leftName = leftName
         self.rightName = rightName
 
@@ -52,21 +52,24 @@ struct VehicleShowdown {
         self.leftMPGSeries = left.mpgSeries
         self.rightMPGSeries = right.mpgSeries
 
+        // Winners are decided on canonical values (ranking is unit-independent);
+        // only the displayed strings and titles change with the unit choice.
         rows = [
-            Self.contest(id: "mpg", title: "Avg MPG", icon: "leaf.fill", metric: .economy,
+            Self.contest(id: "mpg", title: "Avg \(units.economy.abbreviation)", icon: "leaf.fill", metric: .economy,
                          left: left.averageMPG, right: right.averageMPG,
-                         lowerIsBetter: false, format: Format.mpg),
-            Self.contest(id: "cpm", title: "Cost per Mile", icon: "road.lanes", metric: .spending,
+                         lowerIsBetter: false, format: { Format.economy($0, in: units.economy) ?? "—" }),
+            Self.contest(id: "cpm", title: "Cost per \(units.distance.singularNoun)", icon: "road.lanes", metric: .spending,
                          left: left.costPerMile, right: right.costPerMile,
-                         lowerIsBetter: true, format: Format.costPerMile),
-            Self.contest(id: "ppg", title: "Avg Price/Gal", icon: "fuelpump.fill", metric: .price,
+                         lowerIsBetter: true, format: { Format.costPerDistance($0, in: units.distance) }),
+            Self.contest(id: "ppg", title: "Avg Price/\(units.volume.abbreviation)", icon: "fuelpump.fill", metric: .price,
                          left: left.averagePricePerGallon, right: right.averagePricePerGallon,
-                         lowerIsBetter: true, format: Format.fuelPrice),
+                         lowerIsBetter: true, format: { Format.fuelPrice($0, per: units.volume) }),
             // Informational — lower isn't inherently "better" (it can just mean
             // less driving), so these have no winner.
-            Self.info(id: "miles", title: "Miles Tracked",
+            Self.info(id: "miles", title: "\(units.distance.name) Tracked",
                       icon: "point.topleft.down.to.point.bottomright.curvepath.fill", metric: .distance,
-                      left: left.milesTracked, right: right.milesTracked, format: Format.odometer),
+                      left: left.milesTracked, right: right.milesTracked,
+                      format: { Format.distance($0, in: units.distance) }),
             Self.info(id: "spent", title: "Total Spent", icon: "dollarsign.circle.fill", metric: .spending,
                       left: left.totalSpent, right: right.totalSpent, format: Format.currency),
             Self.info(id: "fills", title: "Fill-Ups", icon: "list.number", metric: .distance,

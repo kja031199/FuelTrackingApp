@@ -30,6 +30,9 @@ struct DashboardView: View {
     @State private var showingAddSheet = false
     @State private var entryBeingReviewed: FuelEntry?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(UnitSettings.self) private var unitSettings: UnitSettings?
+
+    private var units: UnitPreferences { unitSettings?.preferences ?? .us }
 
     /// Two columns normally; a single column at accessibility text sizes so
     /// each card has full width to grow into instead of clipping.
@@ -62,7 +65,7 @@ struct DashboardView: View {
                         Label("No Data Yet", systemImage: "chart.xyaxis.line")
                     } description: {
                         Text(timeRange == .all
-                             ? "Log a few fill-ups to see MPG, spending, and price trends."
+                             ? "Log a few fill-ups to see \(units.economy.abbreviation), spending, and price trends."
                              : "No fill-ups in this time range. Try a longer range.")
                     } actions: {
                         if timeRange == .all {
@@ -117,24 +120,29 @@ struct DashboardView: View {
                 }
 
                 LazyVGrid(columns: kpiColumns, spacing: 12) {
-                    ForEach(statistics.dashboardKPIs) { kpi in
+                    ForEach(statistics.dashboardKPIs(units: units)) { kpi in
                         KPICard(kpi: kpi)
                     }
                 }
 
                 if statistics.mpgPoints.count >= 2 {
+                    // Economy is non-linear across units (L/100km inverts MPG),
+                    // so the series itself is converted, not just relabeled.
+                    let economySeries = statistics.mpgSeries.mapValues { units.economy.fromMPG($0) ?? $0 }
+                    let economyAbbr = units.economy.abbreviation
                     ChartCard(
                         title: "Fuel Economy",
-                        subtitle: "MPG per full-tank fill-up",
+                        subtitle: "\(economyAbbr) per full-tank fill-up",
                         accessibilitySummary: ChartAccessibility.summary(
-                            statistics.mpgSeries, unit: "miles per gallon", format: Format.mpg
+                            economySeries, unit: economyAbbr,
+                            format: { $0.formatted(.number.precision(.fractionLength(1))) }
                         )
                     ) {
                         MetricLineChart(
-                            points: statistics.mpgSeries,
+                            points: economySeries,
                             metric: .economy,
-                            average: statistics.averageMPG,
-                            valueLabel: { "\(Format.mpg($0)) MPG" }
+                            average: statistics.averageMPG.flatMap { units.economy.fromMPG($0) },
+                            valueLabel: { "\($0.formatted(.number.precision(.fractionLength(1)))) \(economyAbbr)" }
                         )
                     }
                 } else {
@@ -142,18 +150,21 @@ struct DashboardView: View {
                 }
 
                 if statistics.pricePoints.count >= 2 {
+                    // Price is linear across volume units, so the canonical
+                    // series is plotted and the labels convert per unit.
                     ChartCard(
                         title: "Gas Price",
-                        subtitle: "Price per gallon you paid",
+                        subtitle: "Price per \(units.volume.singularNoun.lowercased()) you paid",
                         accessibilitySummary: ChartAccessibility.summary(
-                            statistics.priceSeries, unit: "per gallon", format: Format.fuelPrice
+                            statistics.priceSeries, unit: "per \(units.volume.abbreviation)",
+                            format: { Format.fuelPrice($0, per: units.volume) }
                         )
                     ) {
                         MetricLineChart(
                             points: statistics.priceSeries,
                             metric: .price,
-                            valueLabel: Format.fuelPrice,
-                            yAxisLabel: Format.plainCurrency
+                            valueLabel: { Format.fuelPrice($0, per: units.volume) },
+                            yAxisLabel: { Format.plainCurrency($0 / units.volume.fromGallons(1)) }
                         )
                     }
                 }
@@ -165,16 +176,17 @@ struct DashboardView: View {
                 if statistics.odometerPoints.count >= 2 {
                     ChartCard(
                         title: "Odometer",
-                        subtitle: "Mileage recorded at each fill-up",
+                        subtitle: "\(units.distance.name) recorded at each fill-up",
                         accessibilitySummary: ChartAccessibility.summary(
-                            statistics.odometerSeries, unit: "miles", format: Format.odometer
+                            statistics.odometerSeries, unit: units.distance.abbreviation,
+                            format: { Format.distance($0, in: units.distance) }
                         )
                     ) {
                         MetricLineChart(
                             points: statistics.odometerSeries,
                             metric: .distance,
-                            valueLabel: { "\(Format.odometer($0)) mi" },
-                            yAxisLabel: Format.compactMiles
+                            valueLabel: { "\(Format.distance($0, in: units.distance)) \(units.distance.abbreviation)" },
+                            yAxisLabel: { Format.compactDistance($0, in: units.distance) }
                         )
                     }
                 }
@@ -189,11 +201,12 @@ struct DashboardView: View {
                         )
                     }
 
-                    ChartCard(title: "Monthly Distance", subtitle: "Miles driven by month") {
+                    ChartCard(title: "Monthly Distance", subtitle: "\(units.distance.name) driven by month") {
                         MonthlyBarChart(
                             totals: statistics.monthlyTotals,
                             value: \.miles,
-                            metric: .distance
+                            metric: .distance,
+                            yAxisLabel: { Format.compactDistance($0, in: units.distance) }
                         )
                     }
                 }
@@ -211,12 +224,12 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Price by Day")
                     .font(.headline)
-                Text("Average price per gallon by weekday")
+                Text("Average price per \(units.volume.singularNoun.lowercased()) by weekday")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
-            if let insight = statistics.weekdayPriceInsight {
+            if let insight = statistics.weekdayPriceInsight(units: units) {
                 Label(insight, systemImage: "calendar.badge.clock")
                     .font(.caption)
                     .foregroundStyle(.tint)
@@ -224,7 +237,8 @@ struct DashboardView: View {
 
             WeekdayPriceChart(
                 prices: statistics.weekdayPrices,
-                cheapestWeekday: statistics.cheapestWeekday?.weekday
+                cheapestWeekday: statistics.cheapestWeekday?.weekday,
+                units: units
             )
             .frame(height: 180)
         }
@@ -262,12 +276,14 @@ struct DashboardView: View {
     private func suspectMessage(for entry: FuelEntry, statistics: FuelStatistics) -> String {
         let date = entry.date.formatted(date: .abbreviated, time: .omitted)
         guard let mpg = statistics.mpg(for: entry) else {
-            return "The fill-up on \(date) produced an unusually high MPG. If you skipped logging a fill before it, mark it on the entry to keep your stats honest."
+            return "The fill-up on \(date) produced an implausible fuel-economy reading. If you skipped logging a fill before it, mark it on the entry to keep your stats honest."
         }
-        if let median = statistics.medianMPG {
-            return "The fill-up on \(date) computed \(Format.mpg(mpg)) MPG — far above your typical \(Format.mpg(median)). If you skipped logging a fill before it, mark it on the entry to keep your stats honest."
+        let mpgText = Format.economy(mpg, in: units.economy) ?? Format.mpg(mpg)
+        let abbr = units.economy.abbreviation
+        if let median = statistics.medianMPG, let medianText = Format.economy(median, in: units.economy) {
+            return "The fill-up on \(date) computed \(mpgText) \(abbr) — far from your typical \(medianText). If you skipped logging a fill before it, mark it on the entry to keep your stats honest."
         }
-        return "The fill-up on \(date) computed \(Format.mpg(mpg)) MPG, which looks physically impossible. If you skipped logging a fill before it, mark it on the entry to keep your stats honest."
+        return "The fill-up on \(date) computed \(mpgText) \(abbr), which looks physically impossible. If you skipped logging a fill before it, mark it on the entry to keep your stats honest."
     }
 
     private var mpgHint: some View {
@@ -275,9 +291,9 @@ struct DashboardView: View {
             Image(systemName: "chart.xyaxis.line")
                 .font(.title2)
                 .foregroundStyle(.secondary)
-            Text("MPG needs at least two full-tank fill-ups")
+            Text("\(units.economy.abbreviation) needs at least two full-tank fill-ups")
                 .font(.subheadline.weight(.medium))
-            Text("Fill the tank completely and log it — from your second full tank on, MPG is calculated automatically.")
+            Text("Fill the tank completely and log it — from your second full tank on, \(units.economy.abbreviation) is calculated automatically.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -291,4 +307,5 @@ struct DashboardView: View {
 #Preview {
     ContentView()
         .modelContainer(PreviewData.container)
+        .environment(UnitSettings())
 }
