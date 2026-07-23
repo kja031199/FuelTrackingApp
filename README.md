@@ -146,3 +146,7 @@ The suite has three layers:
 - **`HostileInputTests` + adversarial rendering** — deliberately abnormal usage: zero-gallon and negative entries, duplicate odometers, clock skew, future dates, sub-day extrapolation guards, year-boundary grouping, 2,000-entry stress, double-tapped saves, OCR noise floods, out-of-range pump numbers, negative/huge/zero formatter values, and screens rendered against a pathological history — the bar is never crash, never divide by zero, never fabricate a statistic
 
 The thin watch-only view structs aren't in the iOS test bundle (watchOS tests run separately), but all their logic — statistics, KPIs, form model, chart components — is the shared code covered above.
+
+## Contributing
+
+Before making changes, read [`CONTRIBUTING.md`](CONTRIBUTING.md) for the working conventions (the `FuelEntryDraft` write chokepoint, the CloudKit-shaped model rules, the empty-entitlements constraint, and the testing bar) and [`ARCHITECTURE.md`](ARCHITECTURE.md) for how the targets and layers fit together. [`CLAUDE.md`](CLAUDE.md) is the same guidance as a terse operating manual — written for AI assistants, handy for anyone getting oriented fast.
