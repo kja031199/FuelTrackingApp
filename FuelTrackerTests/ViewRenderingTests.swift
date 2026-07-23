@@ -340,6 +340,22 @@ struct SubmissionRenderingTests {
     }
 }
 
+// MARK: - Onboarding
+
+@MainActor
+struct OnboardingRenderingTests {
+    @Test func welcomeRendersForANewUser() {
+        // No vehicles → the "add your first vehicle" stage.
+        render(WelcomeView(onFinish: {}), container: Scenario.empty())
+    }
+
+    @Test func welcomeAdvancesToTheFillUpStageOnceAVehicleExists() {
+        // A vehicle present → the "log your first fill-up" stage.
+        let (container, _) = Scenario.vehicleOnly()
+        render(WelcomeView(onFinish: {}), container: container)
+    }
+}
+
 // MARK: - Settings & non-US units
 
 @MainActor

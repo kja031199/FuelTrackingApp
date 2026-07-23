@@ -26,8 +26,9 @@ user's private iCloud.
 - `Shared/Scanning/` — pure OCR-text→value parsers (pump, odometer, receipt).
 - `Shared/Support/` — formatters, `FillUpFormModel`, `ModelContainerFactory`,
   the units system (`MeasurementUnits`, `UnitSettings`), privacy/security
-  (`PrivacySettings`, `LocationPrivacy`, `StoreProtection`, `AppLock`), and the
-  list search/filter (`FillUpFilter`, `DashboardTimeRange`).
+  (`PrivacySettings`, `LocationPrivacy`, `StoreProtection`, `AppLock`), the
+  list search/filter (`FillUpFilter`, `DashboardTimeRange`), and the first-run
+  gate (`OnboardingGate`).
 - `FuelTracker/` — the iPhone app (thin views) + iOS-only `Scanning/` importers
   and `Services/` (Vision, ImageIO, CoreLocation/MapKit, PhotosUI).
 - `FuelTrackerWatch/` — the watch app (thin views).
@@ -195,6 +196,12 @@ directory. Respect the `Shared/` framework rule when choosing where it goes.
   *printed* station name still applies. `LocationPrivacy.purgeSavedLocations(in:)`
   nils coordinates on every `FuelEntry` **and** `PendingFillUp`. If you add a new
   location source, gate it on this flag and clear it in the purge.
+- First-run onboarding (`WelcomeView`) shows only when
+  `OnboardingGate.shouldOnboard(hasCompleted:vehicleCount:)` is true — i.e. no
+  vehicles **and** the `@AppStorage("hasOnboarded")` flag isn't set. It's decided
+  once in `ContentView`'s `.task` (before iCloud sync might populate vehicles),
+  presented as a `fullScreenCover`, reuses the real add-vehicle/add-fill-up
+  forms, and is skippable; finishing sets the flag so it never returns.
 - The fill-up list search/filter (`FillUpFilter`) is a **pure in-memory filter**
   over one vehicle's already-loaded history — not a `#Predicate`/`@Query` — and
   it only narrows what the list *shows*; `FuelStatistics` stays computed over the

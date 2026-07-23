@@ -4,6 +4,8 @@ import SwiftData
 struct ContentView: View {
     @Query(sort: \Vehicle.createdAt) private var vehicles: [Vehicle]
     @AppStorage("selectedVehicleID") private var selectedVehicleID: String = ""
+    @AppStorage("hasOnboarded") private var hasOnboarded = false
+    @State private var showingOnboarding = false
 
     private var selectedVehicle: Vehicle? {
         vehicles.first { $0.id.uuidString == selectedVehicleID } ?? vehicles.first
@@ -38,6 +40,18 @@ struct ContentView: View {
                 .tabItem {
                     Label("Settings", systemImage: "gearshape.fill")
                 }
+        }
+        .fullScreenCover(isPresented: $showingOnboarding) {
+            WelcomeView {
+                hasOnboarded = true
+                showingOnboarding = false
+            }
+        }
+        .task {
+            // Decide once on launch, before iCloud sync might populate vehicles.
+            if OnboardingGate.shouldOnboard(hasCompleted: hasOnboarded, vehicleCount: vehicles.count) {
+                showingOnboarding = true
+            }
         }
     }
 }
