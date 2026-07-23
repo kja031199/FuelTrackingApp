@@ -143,6 +143,14 @@ Two on-device protections for the fuel log (location history + receipt photos):
   so the lock's state machine is unit-tested without hardware. The lock is a UI
   gate on top of the data-protection class above — not encryption on its own.
 
+## Privacy disclosure
+
+[`docs/privacy.md`](privacy.md) is the plain-language privacy policy plus the
+App Store "App Privacy" data-disclosure checklist. It reflects the behavior
+documented here — on-device storage, optional private-iCloud sync, user
+location controls, and the at-rest/app-lock protections — and is the source to
+keep in sync when data handling changes.
+
 ## Tests
 
 `FuelTrackerTests/SecurityHardeningTests.swift` covers the fixes: the parser

@@ -147,6 +147,10 @@ The suite has three layers:
 
 The thin watch-only view structs aren't in the iOS test bundle (watchOS tests run separately), but all their logic — statistics, KPIs, form model, chart components — is the shared code covered above.
 
+## Privacy
+
+FuelTracker keeps your data on your device — there's no server, no account, and no analytics or third-party tracking. Data syncs only to your own private iCloud (optional, off by default), and station detection sends coordinates to Apple Maps only when you use it. Full details, plus the App Store "App Privacy" data-disclosure checklist, are in [`docs/privacy.md`](docs/privacy.md). (Before submitting to the App Store, fill in the contact/URL placeholders there and host the policy at a public link.)
+
 ## Contributing
 
 Before making changes, read [`CONTRIBUTING.md`](CONTRIBUTING.md) for the working conventions (the `FuelEntryDraft` write chokepoint, the CloudKit-shaped model rules, the empty-entitlements constraint, and the testing bar) and [`ARCHITECTURE.md`](ARCHITECTURE.md) for how the targets and layers fit together. [`CLAUDE.md`](CLAUDE.md) is the same guidance as a terse operating manual — written for AI assistants, handy for anyone getting oriented fast.
