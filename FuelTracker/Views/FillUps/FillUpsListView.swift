@@ -11,12 +11,23 @@ struct FillUpsListView: View {
 
     @State private var showingAddSheet = false
     @State private var entryBeingEdited: FuelEntry?
+    @State private var filter = FillUpFilter()
     @Environment(UnitSettings.self) private var unitSettings: UnitSettings?
 
     private var units: UnitPreferences { unitSettings?.preferences ?? .us }
 
     private var entries: [FuelEntry] {
         (selectedVehicle?.fillUps ?? []).sorted { $0.date > $1.date }
+    }
+
+    private var filteredEntries: [FuelEntry] {
+        filter.apply(to: entries)
+    }
+
+    /// Distinct non-empty station names in this vehicle's history, for the
+    /// station filter menu.
+    private var stationOptions: [String] {
+        Array(Set(entries.map(\.station))).filter { !$0.isEmpty }.sorted()
     }
 
     var body: some View {
@@ -42,7 +53,7 @@ struct FillUpsListView: View {
                     }
                 } else {
                     List {
-                        ForEach(entries) { entry in
+                        ForEach(filteredEntries) { entry in
                             Button {
                                 entryBeingEdited = entry
                             } label: {
@@ -57,6 +68,12 @@ struct FillUpsListView: View {
                         }
                         .onDelete(perform: deleteEntries)
                     }
+                    .searchable(text: $filter.searchText, prompt: "Station or notes")
+                    .overlay {
+                        if filteredEntries.isEmpty {
+                            noMatchesView
+                        }
+                    }
                 }
             }
             .navigationTitle("Fill-Ups")
@@ -67,6 +84,11 @@ struct FillUpsListView: View {
                         selectedVehicleID: $selectedVehicleID,
                         selectedVehicle: selectedVehicle
                     )
+                }
+                if let selectedVehicle, !selectedVehicle.fillUps.isEmpty {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        filterMenu
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -87,8 +109,68 @@ struct FillUpsListView: View {
         }
     }
 
+    private var filterMenu: some View {
+        Menu {
+            Picker("Date Range", selection: $filter.range) {
+                ForEach(DashboardTimeRange.allCases) { range in
+                    Text(rangeLabel(range)).tag(range)
+                }
+            }
+
+            Picker("Fuel Grade", selection: $filter.fuelGrade) {
+                Text("All Grades").tag(FuelGrade?.none)
+                ForEach(FuelGrade.allCases) { grade in
+                    Text(grade.rawValue).tag(Optional(grade))
+                }
+            }
+
+            if !stationOptions.isEmpty {
+                Picker("Station", selection: $filter.station) {
+                    Text("All Stations").tag(String?.none)
+                    ForEach(stationOptions, id: \.self) { station in
+                        Text(station).tag(Optional(station))
+                    }
+                }
+            }
+
+            if filter.isActive {
+                Divider()
+                Button("Clear Filters", systemImage: "xmark.circle") {
+                    filter = FillUpFilter()
+                }
+            }
+        } label: {
+            Label(
+                "Filter",
+                systemImage: filter.isActive
+                    ? "line.3.horizontal.decrease.circle.fill"
+                    : "line.3.horizontal.decrease.circle"
+            )
+        }
+    }
+
+    private var noMatchesView: some View {
+        ContentUnavailableView {
+            Label("No Matches", systemImage: "line.3.horizontal.decrease.circle")
+        } description: {
+            Text("No fill-ups match your search and filters.")
+        } actions: {
+            Button("Clear Filters") { filter = FillUpFilter() }
+                .buttonStyle(.borderedProminent)
+        }
+    }
+
+    private func rangeLabel(_ range: DashboardTimeRange) -> String {
+        switch range {
+        case .threeMonths: "Last 3 Months"
+        case .sixMonths: "Last 6 Months"
+        case .year: "Last Year"
+        case .all: "All Time"
+        }
+    }
+
     private func deleteEntries(at offsets: IndexSet) {
-        let toDelete = offsets.map { entries[$0] }
+        let toDelete = offsets.map { filteredEntries[$0] }
         for entry in toDelete {
             modelContext.delete(entry)
         }
