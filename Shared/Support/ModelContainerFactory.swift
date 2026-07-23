@@ -20,7 +20,9 @@ enum ModelContainerFactory {
                 isStoredInMemoryOnly: false,
                 cloudKitDatabase: .automatic
             )
-            return try ModelContainer(for: schema, configurations: [cloudConfiguration])
+            let container = try ModelContainer(for: schema, configurations: [cloudConfiguration])
+            StoreProtection.secureStore(at: cloudConfiguration.url)
+            return container
         } catch {
             // Expected on free/personal teams without the iCloud capability;
             // redact the error so nothing sensitive lands in the device log.
@@ -33,7 +35,9 @@ enum ModelContainerFactory {
                 isStoredInMemoryOnly: false,
                 cloudKitDatabase: .none
             )
-            return try ModelContainer(for: schema, configurations: [localConfiguration])
+            let container = try ModelContainer(for: schema, configurations: [localConfiguration])
+            StoreProtection.secureStore(at: localConfiguration.url)
+            return container
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }

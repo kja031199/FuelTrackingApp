@@ -7,6 +7,7 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(UnitSettings.self) private var unitSettings
     @Environment(PrivacySettings.self) private var privacySettings
+    @Environment(AppLock.self) private var appLock
 
     @State private var showingPurgeConfirmation = false
     @State private var purgeResultMessage: String?
@@ -14,6 +15,7 @@ struct SettingsView: View {
     var body: some View {
         @Bindable var units = unitSettings
         @Bindable var privacy = privacySettings
+        @Bindable var lock = appLock
 
         NavigationStack {
             Form {
@@ -59,6 +61,17 @@ struct SettingsView: View {
                 } footer: {
                     Text("When on, logging a fill-up can save where it happened — with your permission — so the app can name the station. Turn it off to stop recording locations entirely; the app won't request or use your location. Removing saved locations clears the coordinates from fill-ups you've already logged, keeping the fill-ups themselves.")
                 }
+
+                Section {
+                    Toggle("Require Face ID / Passcode", isOn: $lock.isEnabled)
+                        .disabled(!appLock.canUseLock)
+                } header: {
+                    Text("Security")
+                } footer: {
+                    Text(appLock.canUseLock
+                         ? "Require Face ID, Touch ID, or your device passcode to open FuelTracker. The app locks whenever it leaves the foreground."
+                         : "Set up Face ID, Touch ID, or a passcode in the Settings app to use an app lock.")
+                }
             }
             .navigationTitle("Settings")
             .confirmationDialog(
@@ -95,4 +108,5 @@ struct SettingsView: View {
     SettingsView()
         .environment(UnitSettings())
         .environment(PrivacySettings())
+        .environment(AppLock(authenticator: BiometricAuthenticator()))
 }
