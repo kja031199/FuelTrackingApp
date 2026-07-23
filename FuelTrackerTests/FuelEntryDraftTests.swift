@@ -25,6 +25,16 @@ struct FuelEntryDraftTests {
         #expect(FuelEntryDraft(date: .now, odometer: 100, gallons: 10, pricePerGallon: 0) == nil)
     }
 
+    @Test func rejectsNonFiniteNumbers() {
+        // NaN fails the `> 0` test; +∞ is "positive" and would otherwise pass,
+        // so the isFinite guard has to catch it. Both must yield no draft.
+        for value in [Double.nan, .infinity] {
+            #expect(FuelEntryDraft(date: .now, odometer: value, gallons: 10, pricePerGallon: 3) == nil)
+            #expect(FuelEntryDraft(date: .now, odometer: 100, gallons: value, pricePerGallon: 3) == nil)
+            #expect(FuelEntryDraft(date: .now, odometer: 100, gallons: 10, pricePerGallon: value) == nil)
+        }
+    }
+
     @Test func acceptsAValidFillUp() throws {
         let draft = try #require(FuelEntryDraft(date: .now, odometer: 100, gallons: 10, pricePerGallon: 3))
         #expect(draft.odometer == 100)

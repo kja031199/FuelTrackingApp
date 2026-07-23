@@ -29,8 +29,11 @@ struct FuelEntryDraft {
     /// so the blob is dropped rather than persisted (and synced) unbounded.
     static let maxReceiptBytes = 4 * 1024 * 1024
 
-    /// Fails when odometer, gallons, or price-per-gallon is missing or not
-    /// positive — the same rule the form's Save button enforces.
+    /// Fails when odometer, gallons, or price-per-gallon is missing, not
+    /// positive, or not finite — the same rule the form's Save button
+    /// enforces. `NaN` fails the `> 0` test already; the explicit `isFinite`
+    /// also rejects `+∞`, which would otherwise slip through as "positive"
+    /// from a crafted or corrupted synced record and poison every statistic.
     init?(
         date: Date,
         odometer: Double?,
@@ -45,9 +48,9 @@ struct FuelEntryDraft {
         longitude: Double? = nil,
         receiptImageData: Data? = nil
     ) {
-        guard let odometer, odometer > 0,
-              let gallons, gallons > 0,
-              let pricePerGallon, pricePerGallon > 0 else {
+        guard let odometer, odometer > 0, odometer.isFinite,
+              let gallons, gallons > 0, gallons.isFinite,
+              let pricePerGallon, pricePerGallon > 0, pricePerGallon.isFinite else {
             return nil
         }
         self.date = date
