@@ -55,7 +55,8 @@ final class FillUpImportModel {
         data: Data,
         into form: FillUpFormModel,
         previousOdometer: Double?,
-        typicalMilesPerFill: Double?
+        typicalMilesPerFill: Double?,
+        captureLocation: Bool = true
     ) async {
         isImportingPhoto = true
         summary = nil
@@ -77,19 +78,25 @@ final class FillUpImportModel {
         let outcome: ImportOutcome
         if Self.looksLikeReceipt(receipt) {
             // A printed date or station means it's a receipt. Only reach for
-            // GPS when the receipt didn't name the station itself.
+            // GPS when the receipt didn't name the station itself — and never
+            // when the user has opted out of location capture.
             let station = await nearestStation(
                 latitude: receipt.latitude, longitude: receipt.longitude,
-                when: receipt.stationName == nil
+                when: receipt.stationName == nil && captureLocation
             )
-            outcome = Self.applyReceipt(receipt, to: form, resolvedStation: station)
+            outcome = Self.applyReceipt(
+                receipt, to: form, resolvedStation: station, captureLocation: captureLocation
+            )
         } else {
-            let station = await nearestStation(latitude: pump.latitude, longitude: pump.longitude, when: true)
+            let station = await nearestStation(
+                latitude: pump.latitude, longitude: pump.longitude, when: captureLocation
+            )
             outcome = Self.applyPumpReading(
                 pump, to: form,
                 previousOdometer: previousOdometer,
                 typicalMilesPerFill: typicalMilesPerFill,
-                resolvedStation: station
+                resolvedStation: station,
+                captureLocation: captureLocation
             )
         }
         summary = outcome.summary
@@ -107,7 +114,11 @@ final class FillUpImportModel {
 
     // MARK: - Station
 
-    func detectStation(into form: FillUpFormModel) async {
+    func detectStation(into form: FillUpFormModel, captureLocation: Bool = true) async {
+        // Respect the location-capture opt-out: never touch Core Location when
+        // the user has turned capture off. (The UI also hides the button, but
+        // this guard keeps the model safe on its own.)
+        guard captureLocation else { return }
         guard !isLocatingStation else { return }
         isLocatingStation = true
         stationHint = nil
@@ -162,7 +173,8 @@ final class FillUpImportModel {
         to form: FillUpFormModel,
         previousOdometer: Double?,
         typicalMilesPerFill: Double?,
-        resolvedStation: DetectedStation?
+        resolvedStation: DetectedStation?,
+        captureLocation: Bool = true
     ) -> ImportOutcome {
         var parts: [String] = []
         var filled: Set<ImportOutcome.Field> = []
@@ -208,6 +220,7 @@ final class FillUpImportModel {
             longitude: imported.longitude,
             printedStation: nil,
             resolvedStation: resolvedStation,
+            captureLocation: captureLocation,
             to: form,
             parts: &parts,
             filled: &filled
@@ -226,7 +239,8 @@ final class FillUpImportModel {
     nonisolated static func applyReceipt(
         _ imported: ReceiptPhotoImport,
         to form: FillUpFormModel,
-        resolvedStation: DetectedStation?
+        resolvedStation: DetectedStation?,
+        captureLocation: Bool = true
     ) -> ImportOutcome {
         var parts: [String] = []
         var filled: Set<ImportOutcome.Field> = []
@@ -258,6 +272,7 @@ final class FillUpImportModel {
             longitude: imported.longitude,
             printedStation: imported.stationName,
             resolvedStation: resolvedStation,
+            captureLocation: captureLocation,
             to: form,
             parts: &parts,
             filled: &filled
@@ -278,10 +293,16 @@ final class FillUpImportModel {
         longitude: Double?,
         printedStation: String?,
         resolvedStation: DetectedStation?,
+        captureLocation: Bool,
         to form: FillUpFormModel,
         parts: inout [String],
         filled: inout Set<ImportOutcome.Field>
     ) {
+        // With capture off, a photo's embedded GPS is ignored entirely — no
+        // coordinates stored and no location-derived station. A station printed
+        // on the receipt is text, not location, so it's kept (set by the caller
+        // before this point).
+        guard captureLocation else { return }
         guard let latitude, let longitude else { return }
         form.latitude = latitude
         form.longitude = longitude

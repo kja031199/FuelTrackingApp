@@ -25,7 +25,8 @@ user's private iCloud.
   `WeekdayPricePattern`, `KPI`.
 - `Shared/Scanning/` — pure OCR-text→value parsers (pump, odometer, receipt).
 - `Shared/Support/` — formatters, `FillUpFormModel`, `ModelContainerFactory`,
-  and the units system (`MeasurementUnits`, `UnitSettings`).
+  the units system (`MeasurementUnits`, `UnitSettings`), and privacy
+  (`PrivacySettings`, `LocationPrivacy`).
 - `FuelTracker/` — the iPhone app (thin views) + iOS-only `Scanning/` importers
   and `Services/` (Vision, ImageIO, CoreLocation/MapKit, PhotosUI).
 - `FuelTrackerWatch/` — the watch app (thin views).
@@ -185,6 +186,14 @@ directory. Respect the `Shared/` framework rule when choosing where it goes.
     with the phone needs a shared App Group, deferred with iCloud).
 - `Winner.notContested` (not `.none`) is the showdown "tie" case — the rename
   avoided an optional-chaining footgun (`row("x")?.winner == .none`).
+- Location capture is user-controllable (`PrivacySettings.locationCaptureEnabled`,
+  Settings → Location). When off, **no Core Location use and no coordinates
+  stored** — the flag is threaded as `captureLocation` through
+  `detectStation` / `importPhoto` and the pure mappers
+  (`applyPumpReading` / `applyReceipt` / `applyCoordinates`); a receipt's
+  *printed* station name still applies. `LocationPrivacy.purgeSavedLocations(in:)`
+  nils coordinates on every `FuelEntry` **and** `PendingFillUp`. If you add a new
+  location source, gate it on this flag and clear it in the purge.
 
 ## Before you open a PR
 

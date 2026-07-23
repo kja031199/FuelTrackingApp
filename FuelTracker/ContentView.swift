@@ -78,4 +78,5 @@ struct VehiclePickerMenu: View {
     ContentView()
         .modelContainer(PreviewData.container)
         .environment(UnitSettings())
+        .environment(PrivacySettings())
 }

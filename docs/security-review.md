@@ -80,7 +80,8 @@ result**. Undecodable or oversized input is dropped, never stored.
 - **Receipt images and GPS coordinates are PII.** They are stored in the local
   SwiftData store and, when the user enables it, the **private** CloudKit
   database. This is the user's own data, held on their device/account by
-  design; there is no third-party transmission. Accepted.
+  design; there is no third-party transmission. Accepted. Location capture is
+  now user-controllable — see "Location privacy controls" below.
 - **`StationLocator` continuation re-entrancy.** Calling `detectStation()`
   again while a previous call is still awaiting a location fix would leak the
   first continuation (a hang, not a crash). The UI already guards every entry
@@ -92,6 +93,29 @@ result**. Undecodable or oversized input is dropped, never stored.
   value before saving; the statistics layer already tolerates odd dates.
 - **CloudKit entitlement ships disabled.** Intentional, so free-Apple-ID
   builds work locally; documented in the README. Not a vulnerability.
+
+## Location privacy controls
+
+Location is the most sensitive data the app records, so the user has direct
+control over it (Settings → Location):
+
+- **Capture opt-out.** `PrivacySettings.locationCaptureEnabled` gates every
+  path that records where a fill-up happened. When off, the app **never
+  requests or uses Core Location** (the detect-station button is hidden and the
+  auto-detect on the entry form is skipped), and it **stores no coordinates** —
+  a photo's embedded GPS is ignored, and no location-derived station name is
+  applied. A station name *printed on a receipt* is OCR text, not location
+  tracking, so it is still honored. The flag is threaded through the pure
+  mappers (`applyPumpReading` / `applyReceipt` / `applyCoordinates`) as
+  `captureLocation`, so the behavior is unit-tested.
+  - Default: **on**. Station detection is already gated behind an explicit iOS
+    permission prompt, so a coordinate is only ever captured after system-level
+    consent; the toggle lets a user opt out entirely.
+- **Purge saved locations.** `LocationPrivacy.purgeSavedLocations(in:)` clears
+  the coordinates from every stored `FuelEntry` **and** `PendingFillUp`, leaving
+  the records and their other fields intact. It's a single, confirmed,
+  irreversible action in Settings. This backs the App Store data-deletion
+  expectation.
 
 ## Tests
 
