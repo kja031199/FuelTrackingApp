@@ -53,7 +53,7 @@ extension FuelStatistics {
     /// Headline comparing the cheapest and priciest weekdays — shown only
     /// when the pattern is worth trusting: at least two distinct weekdays,
     /// a handful of fills overall, and at least a one-cent spread.
-    var weekdayPriceInsight: String? {
+    func weekdayPriceInsight(units: UnitPreferences = .us) -> String? {
         let prices = weekdayPrices
         guard prices.count >= 2,
               fillUpCount >= 4,
@@ -67,7 +67,8 @@ extension FuelStatistics {
         let fullSymbols = DateFormatter().weekdaySymbols ?? Self.fallbackFullSymbols   // index 0 = Sunday
         let cheapName = fullSymbols[cheapest.weekday - 1]
         let priceyName = fullSymbols[priciest.weekday - 1]
-        return "You pay about \(Format.plainCurrency(delta))/gal less on \(cheapName)s than \(priceyName)s."
+        let perUnitDelta = Format.plainCurrency(delta / units.volume.fromGallons(1))
+        return "You pay about \(perUnitDelta)/\(units.volume.abbreviation) less on \(cheapName)s than \(priceyName)s."
     }
 
     // Defensive fallbacks; DateFormatter always supplies these in practice.

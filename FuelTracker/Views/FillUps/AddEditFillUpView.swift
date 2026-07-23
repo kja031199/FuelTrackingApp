@@ -10,6 +10,7 @@ struct AddEditFillUpView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(UnitSettings.self) private var unitSettings: UnitSettings?
 
     @Query(sort: \Vehicle.createdAt) private var vehicles: [Vehicle]
 
@@ -30,6 +31,32 @@ struct AddEditFillUpView: View {
 
     private var selectedVehicle: Vehicle? {
         vehicles.first { $0.id == selectedVehicleID }
+    }
+
+    private var units: UnitPreferences { unitSettings?.preferences ?? .us }
+
+    // The form stores canonical miles/gallons/price-per-gallon; these bind the
+    // fields to the user's units, converting on the way in and out so the
+    // stored values are always canonical regardless of what's displayed.
+    private var odometerField: Binding<Double?> {
+        Binding(
+            get: { form.odometer.map { units.distance.fromMiles($0) } },
+            set: { form.odometer = $0.map { units.distance.toMiles($0) } }
+        )
+    }
+
+    private var gallonsField: Binding<Double?> {
+        Binding(
+            get: { form.gallons.map { units.volume.fromGallons($0) } },
+            set: { form.gallons = $0.map { units.volume.toGallons($0) } }
+        )
+    }
+
+    private var priceField: Binding<Double?> {
+        Binding(
+            get: { form.pricePerGallon.map { $0 / units.volume.fromGallons(1) } },
+            set: { form.pricePerGallon = $0.map { $0 * units.volume.fromGallons(1) } }
+        )
     }
 
     var body: some View {
@@ -82,7 +109,7 @@ struct AddEditFillUpView: View {
 
                     LabeledContent("Odometer") {
                         HStack {
-                            TextField("miles", value: $form.odometer, format: .number)
+                            TextField(units.distance.abbreviation, value: odometerField, format: .number)
                                 .keyboardType(.decimalPad)
                                 .multilineTextAlignment(.trailing)
                             Button {
@@ -96,15 +123,15 @@ struct AddEditFillUpView: View {
                     }
                     .listRowBackground(highlightBackground(for: .odometer))
 
-                    LabeledContent("Gallons") {
-                        TextField("0.000", value: $form.gallons, format: .number)
+                    LabeledContent(units.volume.name) {
+                        TextField("0.000", value: gallonsField, format: .number)
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                     }
                     .listRowBackground(highlightBackground(for: .gallons))
 
-                    LabeledContent("Price per Gallon") {
-                        TextField("0.000", value: $form.pricePerGallon, format: .number)
+                    LabeledContent("Price per \(units.volume.singularNoun)") {
+                        TextField("0.000", value: priceField, format: .number)
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                     }
@@ -121,7 +148,7 @@ struct AddEditFillUpView: View {
                     if form.odometerLooksWrong(for: selectedVehicle),
                        let previous = form.previousOdometer(for: selectedVehicle) {
                         Label(
-                            "Odometer is at or below the last reading (\(Format.odometer(previous)) mi). Double-check before saving.",
+                            "Odometer is at or below the last reading (\(Format.distance(previous, in: units.distance, withUnit: true))). Double-check before saving.",
                             systemImage: "exclamationmark.triangle.fill"
                         )
                         .foregroundStyle(.orange)

@@ -33,6 +33,11 @@ struct ContentView: View {
                 .tabItem {
                     Label("Vehicles", systemImage: "car.fill")
                 }
+
+            SettingsView()
+                .tabItem {
+                    Label("Settings", systemImage: "gearshape.fill")
+                }
         }
     }
 }
@@ -72,4 +77,5 @@ struct VehiclePickerMenu: View {
 #Preview {
     ContentView()
         .modelContainer(PreviewData.container)
+        .environment(UnitSettings())
 }

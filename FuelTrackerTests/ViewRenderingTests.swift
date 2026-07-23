@@ -10,8 +10,8 @@ import UIKit
 /// Hosts a view in a real window and forces layout, so the view's body —
 /// including chart content and empty-state branches — actually executes.
 @MainActor
-private func render(_ view: some View, container: ModelContainer) {
-    let hosting = UIHostingController(rootView: AnyView(view.modelContainer(container)))
+private func render(_ view: some View, container: ModelContainer, units: UnitSettings = UnitSettings()) {
+    let hosting = UIHostingController(rootView: AnyView(view.modelContainer(container).environment(units)))
     let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
     window.rootViewController = hosting
     window.makeKeyAndVisible()
@@ -321,6 +321,50 @@ struct SubmissionRenderingTests {
         // A pending submission switches on the "Review 1 submission" toolbar item.
         let (container, vehicle) = Scenario.withPendingSubmission()
         render(VehiclesView(selectedVehicleID: .constant(vehicle.id.uuidString)), container: container)
+    }
+}
+
+// MARK: - Settings & non-US units
+
+@MainActor
+struct UnitsRenderingTests {
+    /// A settings store forced to metric, isolated to its own defaults suite.
+    private func metricUnits() -> UnitSettings {
+        let store = UnitSettings(defaults: UserDefaults(suiteName: "test.render.\(UUID().uuidString)")!)
+        store.volumeUnit = .liters
+        store.distanceUnit = .kilometers
+        store.economyUnit = .litersPer100km
+        return store
+    }
+
+    @Test func settingsScreenRenders() {
+        render(SettingsView(), container: Scenario.empty())
+    }
+
+    @Test func dashboardRendersUnderMetricUnits() {
+        // A full dashboard — KPIs plus every chart — exercised with converted
+        // units, including the non-linear economy chart.
+        let (container, vehicle) = Scenario.populated()
+        render(
+            DashboardView(selectedVehicle: vehicle, vehicles: [vehicle], selectedVehicleID: .constant("")),
+            container: container,
+            units: metricUnits()
+        )
+    }
+
+    @Test func fillUpsListRendersUnderMetricUnits() {
+        let (container, vehicle) = Scenario.populated()
+        render(
+            FillUpsListView(selectedVehicle: vehicle, vehicles: [vehicle], selectedVehicleID: .constant("")),
+            container: container,
+            units: metricUnits()
+        )
+    }
+
+    @Test func addEditFormRendersUnderMetricUnits() {
+        // The entry form's converting bindings must lay out with metric labels.
+        let (container, vehicle) = Scenario.vehicleOnly()
+        render(AddEditFillUpView(defaultVehicle: vehicle), container: container, units: metricUnits())
     }
 }
 

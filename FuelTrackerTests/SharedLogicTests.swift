@@ -239,25 +239,51 @@ struct KPITests {
     }
 
     @Test func dashboardKPIsAreCompleteAndUnique() {
-        let kpis = populated.dashboardKPIs
+        let kpis = populated.dashboardKPIs()
         #expect(kpis.count == 8)
         #expect(Set(kpis.map(\.id)).count == kpis.count)
         #expect(kpis.allSatisfy { $0.value != nil })
     }
 
     @Test func compactKPIsAreTheWatchSubset() {
-        let kpis = populated.compactKPIs
+        let kpis = populated.compactKPIs()
         #expect(kpis.count == 6)
         #expect(Set(kpis.map(\.id)).count == kpis.count)
     }
 
     @Test func emptyStatisticsShowPlaceholders() {
-        let kpis = FuelStatistics(entries: []).dashboardKPIs
+        let kpis = FuelStatistics(entries: []).dashboardKPIs()
         let averageMPG = kpis.first { $0.title == "Avg MPG" }!
         #expect(averageMPG.value == nil)
         let totalSpent = kpis.first { $0.title == "Total Spent" }!
         #expect(totalSpent.value != nil)
         #expect(totalSpent.detail == nil)
+    }
+
+    @Test func kpiTitlesAndValuesReflectTheChosenUnits() {
+        let us = populated.dashboardKPIs(units: .us)
+        let metric = populated.dashboardKPIs(units: .metric)
+
+        // Ids are stable across unit choices, so a card updates in place.
+        #expect(us.map(\.id) == metric.map(\.id))
+
+        // Titles carry the unit.
+        #expect(us.contains { $0.title == "Avg MPG" })
+        #expect(metric.contains { $0.title == "Avg L/100km" })
+        #expect(metric.contains { $0.title == "Total Liters" })
+        #expect(metric.contains { $0.title == "Cost per Kilometer" })
+        #expect(metric.contains { $0.title == "Avg Price/L" })
+        #expect(metric.contains { $0.title == "Kilometers Tracked" })
+
+        // The economy value actually converts (30 MPG ≠ 7.8 L/100km).
+        let usEcon = us.first { $0.id == "avgEconomy" }!.value
+        let metricEcon = metric.first { $0.id == "avgEconomy" }!.value
+        #expect(usEcon != nil)
+        #expect(metricEcon != nil)
+        #expect(usEcon != metricEcon)
+
+        // US titles/values are unchanged from the canonical output.
+        #expect(us.first { $0.id == "totalVolume" }!.title == "Total Gallons")
     }
 
     @Test func kpiIdDefaultsToTitleButCanBeOverridden() {

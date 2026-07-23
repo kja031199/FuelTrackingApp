@@ -30,7 +30,8 @@ Domain        FuelStatistics, VehicleShowdown,        (pure value logic)
               ReceiptScanParser
    ▲
 Support       FillUpFormModel, Formatters, Metric,    (shared app services)
-              ModelContainerFactory
+              ModelContainerFactory, MeasurementUnits,
+              UnitSettings
    ▲
 Services      PumpPhotoImporter, ReceiptPhotoImporter, (iOS-only: UIKit/
 (iOS only)    ReceiptImage, StationLocator,            Vision/ImageIO/MapKit)
@@ -91,14 +92,16 @@ Shared/
 ├── Models/          SwiftData models + FuelEntryDraft (the write chokepoint)
 ├── Statistics/      KPI & chart math, showdown, weekday patterns
 ├── Scanning/        Pure OCR-text → value parsers (pump, odometer, receipt)
-├── Support/         Shared form model, formatters, metric colors, container factory
+├── Support/         Shared form model, formatters, metric colors, container
+│                    factory, and the units system (canonical storage +
+│                    display/entry conversion)
 └── Views/           Generic chart components used by both apps
 
 FuelTracker/         iPhone app (thin view layer)
 ├── Scanning/        iOS-only: photo importers, image sanitizing, and
 │                    FillUpImportModel (import/scan/station orchestration)
 ├── Services/        iOS-only: StationLocator
-└── Views/           Dashboard, FillUps, Vehicles, Submissions
+└── Views/           Dashboard, FillUps, Vehicles, Submissions, Settings
 
 FuelTrackerWatch/    Apple Watch app (thin view layer)
 FuelTrackerTests/    Unit + rendering tests

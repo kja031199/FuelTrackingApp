@@ -5,6 +5,9 @@ import Charts
 /// shared KPI definitions as the iPhone dashboard.
 struct WatchKPISection: View {
     let statistics: FuelStatistics
+    @Environment(UnitSettings.self) private var unitSettings: UnitSettings?
+
+    private var units: UnitPreferences { unitSettings?.preferences ?? .us }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -12,7 +15,7 @@ struct WatchKPISection: View {
                 .font(.headline)
 
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)], spacing: 6) {
-                ForEach(statistics.compactKPIs) { kpi in
+                ForEach(statistics.compactKPIs(units: units)) { kpi in
                     WatchKPICell(kpi: kpi)
                 }
             }
@@ -46,16 +49,21 @@ struct WatchKPICell: View {
 /// Compact charts using the shared metric chart components.
 struct WatchChartsSection: View {
     let statistics: FuelStatistics
+    @Environment(UnitSettings.self) private var unitSettings: UnitSettings?
+
+    private var units: UnitPreferences { unitSettings?.preferences ?? .us }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if statistics.mpgPoints.count >= 2 {
-                chartCard("MPG") {
+                let economySeries = statistics.mpgSeries.mapValues { units.economy.fromMPG($0) ?? $0 }
+                let economyAbbr = units.economy.abbreviation
+                chartCard(economyAbbr) {
                     MetricLineChart(
-                        points: statistics.mpgSeries,
+                        points: economySeries,
                         metric: .economy,
                         compact: true,
-                        valueLabel: Format.mpg
+                        valueLabel: { "\($0.formatted(.number.precision(.fractionLength(1)))) \(economyAbbr)" }
                     )
                 }
             }
@@ -66,7 +74,7 @@ struct WatchChartsSection: View {
                         points: statistics.priceSeries,
                         metric: .price,
                         compact: true,
-                        valueLabel: Format.fuelPrice
+                        valueLabel: { Format.fuelPrice($0, per: units.volume) }
                     )
                 }
             }

@@ -306,7 +306,7 @@ struct KPISparseDataTests {
         let statistics = FuelStatistics(entries: [
             makeEntry(odometer: 1_000, gallons: 10, price: 3.0),
         ])
-        let kpis = statistics.dashboardKPIs
+        let kpis = statistics.dashboardKPIs()
         #expect(kpis.count == 8)
         #expect(kpis.first { $0.title == "Avg MPG" }!.value == nil)
         #expect(kpis.first { $0.title == "Cost per Mile" }!.value == nil)

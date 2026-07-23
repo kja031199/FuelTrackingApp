@@ -35,23 +35,30 @@ struct KPI: Identifiable {
 }
 
 extension FuelStatistics {
-    /// The full KPI set shown on the iPhone dashboard.
-    var dashboardKPIs: [KPI] {
+    /// The full KPI set shown on the iPhone dashboard, rendered in the given
+    /// units. Titles carry the unit (e.g. "Avg MPG" vs "Avg L/100km"); each KPI
+    /// keeps a stable `id` so switching units updates a card in place rather
+    /// than replacing it. Defaults to US units, which reproduces the canonical
+    /// output exactly.
+    func dashboardKPIs(units p: UnitPreferences = .us) -> [KPI] {
         [
             KPI(
-                title: "Avg MPG",
-                value: averageMPG.map(Format.mpg),
+                id: "avgEconomy",
+                title: "Avg \(p.economy.abbreviation)",
+                value: averageMPG.flatMap { Format.economy($0, in: p.economy) },
                 icon: "leaf.fill",
                 metric: .economy
             ),
             KPI(
-                title: "Last MPG",
-                value: lastMPG.map(Format.mpg),
-                detail: bestMPG.map { "Best: \(Format.mpg($0))" },
+                id: "lastEconomy",
+                title: "Last \(p.economy.abbreviation)",
+                value: lastMPG.flatMap { Format.economy($0, in: p.economy) },
+                detail: bestMPG.flatMap { Format.economy($0, in: p.economy) }.map { "Best: \($0)" },
                 icon: "gauge.with.dots.needle.67percent",
                 metric: .economy
             ),
             KPI(
+                id: "totalSpent",
                 title: "Total Spent",
                 value: Format.currency(totalSpent),
                 detail: averageMonthlySpend.map { "\(Format.currency($0))/mo avg" },
@@ -59,35 +66,40 @@ extension FuelStatistics {
                 metric: .spending
             ),
             KPI(
-                title: "Cost per Mile",
-                value: costPerMile.map(Format.costPerMile),
+                id: "costPerDistance",
+                title: "Cost per \(p.distance.singularNoun)",
+                value: costPerMile.map { Format.costPerDistance($0, in: p.distance) },
                 icon: "road.lanes",
                 metric: .spending
             ),
             KPI(
-                title: "Avg Price/Gal",
-                value: averagePricePerGallon.map(Format.fuelPrice),
-                detail: lastPricePerGallon.map { "Last: \(Format.fuelPrice($0))" },
+                id: "avgPrice",
+                title: "Avg Price/\(p.volume.abbreviation)",
+                value: averagePricePerGallon.map { Format.fuelPrice($0, per: p.volume) },
+                detail: lastPricePerGallon.map { "Last: \(Format.fuelPrice($0, per: p.volume))" },
                 icon: "fuelpump.fill",
                 metric: .price
             ),
             KPI(
-                title: "Miles Tracked",
-                value: Format.odometer(milesTracked),
-                detail: averageMilesBetweenFillUps.map { "\(Format.odometer($0)) mi/fill avg" },
+                id: "distanceTracked",
+                title: "\(p.distance.name) Tracked",
+                value: Format.distance(milesTracked, in: p.distance),
+                detail: averageMilesBetweenFillUps.map { "\(Format.distance($0, in: p.distance)) \(p.distance.abbreviation)/fill avg" },
                 icon: "point.topleft.down.to.point.bottomright.curvepath.fill",
                 metric: .distance
             ),
             KPI(
+                id: "fillUps",
                 title: "Fill-Ups",
                 value: "\(fillUpCount)",
-                detail: averageGallonsPerFillUp.map { "\(Format.gallons($0)) gal avg" },
+                detail: averageGallonsPerFillUp.map { "\(Format.volume($0, in: p.volume)) \(p.volume.abbreviation) avg" },
                 icon: "list.number",
                 metric: .distance
             ),
             KPI(
-                title: "Total Gallons",
-                value: Format.gallons(totalGallons),
+                id: "totalVolume",
+                title: "Total \(p.volume.name)",
+                value: Format.volume(totalGallons, in: p.volume),
                 detail: averageFillUpCost.map { "\(Format.currency($0))/fill avg" },
                 icon: "drop.fill",
                 metric: .price
@@ -95,15 +107,15 @@ extension FuelStatistics {
         ]
     }
 
-    /// The condensed KPI set sized for the watch screen.
-    var compactKPIs: [KPI] {
+    /// The condensed KPI set sized for the watch screen, in the given units.
+    func compactKPIs(units p: UnitPreferences = .us) -> [KPI] {
         [
-            KPI(title: "Avg MPG", value: averageMPG.map(Format.mpg), icon: "leaf.fill", metric: .economy),
-            KPI(title: "Last MPG", value: lastMPG.map(Format.mpg), icon: "gauge.with.dots.needle.67percent", metric: .economy),
-            KPI(title: "Spent", value: Format.currency(totalSpent), icon: "dollarsign.circle.fill", metric: .spending),
-            KPI(title: "Cost/Mi", value: costPerMile.map(Format.costPerMile), icon: "road.lanes", metric: .spending),
-            KPI(title: "Avg $/Gal", value: averagePricePerGallon.map(Format.fuelPrice), icon: "fuelpump.fill", metric: .price),
-            KPI(title: "Miles", value: Format.compactMiles(milesTracked), icon: "point.topleft.down.to.point.bottomright.curvepath.fill", metric: .distance),
+            KPI(id: "avgEconomy", title: "Avg \(p.economy.abbreviation)", value: averageMPG.flatMap { Format.economy($0, in: p.economy) }, icon: "leaf.fill", metric: .economy),
+            KPI(id: "lastEconomy", title: "Last \(p.economy.abbreviation)", value: lastMPG.flatMap { Format.economy($0, in: p.economy) }, icon: "gauge.with.dots.needle.67percent", metric: .economy),
+            KPI(id: "spent", title: "Spent", value: Format.currency(totalSpent), icon: "dollarsign.circle.fill", metric: .spending),
+            KPI(id: "costPerDistance", title: "Cost/\(p.distance.abbreviation)", value: costPerMile.map { Format.costPerDistance($0, in: p.distance) }, icon: "road.lanes", metric: .spending),
+            KPI(id: "avgPrice", title: "Avg $/\(p.volume.abbreviation)", value: averagePricePerGallon.map { Format.fuelPrice($0, per: p.volume) }, icon: "fuelpump.fill", metric: .price),
+            KPI(id: "distanceTracked", title: p.distance.name, value: Format.compactDistance(milesTracked, in: p.distance), icon: "point.topleft.down.to.point.bottomright.curvepath.fill", metric: .distance),
         ]
     }
 }

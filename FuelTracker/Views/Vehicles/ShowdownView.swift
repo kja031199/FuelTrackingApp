@@ -6,10 +6,13 @@ import Charts
 /// the winner highlighted per row, and their MPG trends overlaid.
 struct ShowdownView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(UnitSettings.self) private var unitSettings: UnitSettings?
     let vehicles: [Vehicle]
 
     @State private var leftID: UUID?
     @State private var rightID: UUID?
+
+    private var units: UnitPreferences { unitSettings?.preferences ?? .us }
 
     private var leftVehicle: Vehicle? { vehicles.first { $0.id == leftID } }
     private var rightVehicle: Vehicle? { vehicles.first { $0.id == rightID } }
@@ -18,7 +21,8 @@ struct ShowdownView: View {
         guard let left = leftVehicle, let right = rightVehicle else { return nil }
         return VehicleShowdown(
             leftName: left.name, leftEntries: left.fillUps,
-            rightName: right.name, rightEntries: right.fillUps
+            rightName: right.name, rightEntries: right.fillUps,
+            units: units
         )
     }
 
@@ -80,7 +84,8 @@ struct ShowdownView: View {
                             leftName: showdown.leftName,
                             rightName: showdown.rightName,
                             leftSeries: showdown.leftMPGSeries,
-                            rightSeries: showdown.rightMPGSeries
+                            rightSeries: showdown.rightMPGSeries,
+                            units: units
                         )
                         .frame(height: 220)
                     }
@@ -174,35 +179,40 @@ struct ShowdownMPGChart: View {
     let rightName: String
     let leftSeries: [DateValuePoint]
     let rightSeries: [DateValuePoint]
+    var units: UnitPreferences = .us
 
     private var labels: (left: String, right: String) {
         leftName == rightName ? ("\(leftName) ①", "\(rightName) ②") : (leftName, rightName)
     }
 
     var body: some View {
+        // Economy is non-linear across units, so convert the plotted values.
         let (leftLabel, rightLabel) = labels
+        let leftConverted = leftSeries.mapValues { units.economy.fromMPG($0) ?? $0 }
+        let rightConverted = rightSeries.mapValues { units.economy.fromMPG($0) ?? $0 }
+        let axisLabel = units.economy.abbreviation
         Chart {
-            ForEach(leftSeries) { point in
+            ForEach(leftConverted) { point in
                 LineMark(
                     x: .value("Date", point.date),
-                    y: .value("MPG", point.value),
+                    y: .value(axisLabel, point.value),
                     series: .value("Vehicle", leftLabel)
                 )
                 .foregroundStyle(by: .value("Vehicle", leftLabel))
                 .interpolationMethod(.monotone)
                 .accessibilityLabel("\(leftLabel), \(point.date.formatted(.dateTime.month(.abbreviated).day()))")
-                .accessibilityValue("\(Format.mpg(point.value)) MPG")
+                .accessibilityValue("\(point.value.formatted(.number.precision(.fractionLength(1)))) \(axisLabel)")
             }
-            ForEach(rightSeries) { point in
+            ForEach(rightConverted) { point in
                 LineMark(
                     x: .value("Date", point.date),
-                    y: .value("MPG", point.value),
+                    y: .value(axisLabel, point.value),
                     series: .value("Vehicle", rightLabel)
                 )
                 .foregroundStyle(by: .value("Vehicle", rightLabel))
                 .interpolationMethod(.monotone)
                 .accessibilityLabel("\(rightLabel), \(point.date.formatted(.dateTime.month(.abbreviated).day()))")
-                .accessibilityValue("\(Format.mpg(point.value)) MPG")
+                .accessibilityValue("\(point.value.formatted(.number.precision(.fractionLength(1)))) \(axisLabel)")
             }
         }
         .chartForegroundStyleScale([leftLabel: Color.blue, rightLabel: Color.orange])

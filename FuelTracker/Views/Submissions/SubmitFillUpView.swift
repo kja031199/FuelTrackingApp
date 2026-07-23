@@ -11,6 +11,7 @@ import UIKit
 struct SubmitFillUpView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(UnitSettings.self) private var unitSettings: UnitSettings?
 
     let vehicle: Vehicle
 
@@ -18,6 +19,30 @@ struct SubmitFillUpView: View {
     @State private var submitterName = ""
     @State private var receiptItem: PhotosPickerItem?
     @State private var submitted = false
+
+    private var units: UnitPreferences { unitSettings?.preferences ?? .us }
+
+    // Bind the fields to the user's units; the form keeps canonical values.
+    private var odometerField: Binding<Double?> {
+        Binding(
+            get: { form.odometer.map { units.distance.fromMiles($0) } },
+            set: { form.odometer = $0.map { units.distance.toMiles($0) } }
+        )
+    }
+
+    private var gallonsField: Binding<Double?> {
+        Binding(
+            get: { form.gallons.map { units.volume.fromGallons($0) } },
+            set: { form.gallons = $0.map { units.volume.toGallons($0) } }
+        )
+    }
+
+    private var priceField: Binding<Double?> {
+        Binding(
+            get: { form.pricePerGallon.map { $0 / units.volume.fromGallons(1) } },
+            set: { form.pricePerGallon = $0.map { $0 * units.volume.fromGallons(1) } }
+        )
+    }
 
     var body: some View {
         NavigationStack {
@@ -73,17 +98,17 @@ struct SubmitFillUpView: View {
                 DatePicker("Date", selection: $form.date, displayedComponents: [.date, .hourAndMinute])
 
                 LabeledContent("Odometer") {
-                    TextField("miles", value: $form.odometer, format: .number)
+                    TextField(units.distance.abbreviation, value: odometerField, format: .number)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                 }
-                LabeledContent("Gallons") {
-                    TextField("0.000", value: $form.gallons, format: .number)
+                LabeledContent(units.volume.name) {
+                    TextField("0.000", value: gallonsField, format: .number)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                 }
-                LabeledContent("Price per Gallon") {
-                    TextField("0.000", value: $form.pricePerGallon, format: .number)
+                LabeledContent("Price per \(units.volume.singularNoun)") {
+                    TextField("0.000", value: priceField, format: .number)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                 }
