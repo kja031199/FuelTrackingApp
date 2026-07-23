@@ -1,0 +1,143 @@
+# CLAUDE.md
+
+Operating manual for an AI assistant working in this repo. Claude Code loads
+this automatically at the start of a session. Read it before making changes —
+it captures the things that are expensive to rediscover and easy to get wrong.
+
+It overlaps with [`CONTRIBUTING.md`](CONTRIBUTING.md) (human-facing) and
+[`ARCHITECTURE.md`](ARCHITECTURE.md) (the *why*). This file is the terse "how to
+operate here" version. When they conflict, `ARCHITECTURE.md` wins on structure.
+
+## What this is
+
+FuelTracker is a Fuelly-style iOS + watchOS app for logging gas fill-ups and
+tracking fuel economy and cost, built with SwiftUI + SwiftData (CloudKit-ready).
+There is no server — everything is on-device, optionally synced through the
+user's private iCloud.
+
+**Pointer map** (details in `ARCHITECTURE.md`):
+
+- `Shared/` — compiled into **both** apps. Models, statistics, parsers, form
+  logic, formatters. No UIKit/Vision/ImageIO/MapKit here.
+- `Shared/Models/` — `Vehicle`, `FuelEntry`, `FuelGrade`, `PendingFillUp`, and
+  **`FuelEntryDraft`** (the single write chokepoint).
+- `Shared/Statistics/` — `FuelStatistics` (MPG/cost math), `VehicleShowdown`,
+  `WeekdayPricePattern`, `KPI`.
+- `Shared/Scanning/` — pure OCR-text→value parsers (pump, odometer, receipt).
+- `FuelTracker/` — the iPhone app (thin views) + iOS-only `Scanning/` importers
+  and `Services/` (Vision, ImageIO, CoreLocation/MapKit, PhotosUI).
+- `FuelTrackerWatch/` — the watch app (thin views).
+- `FuelTrackerTests/` — Swift Testing unit + rendering tests.
+
+## Environment reality — read this first
+
+**This environment has no Xcode and cannot build or run the iOS/watchOS test
+suite.** It's Linux; there is no `xcodebuild`, no simulator, no Swift toolchain
+that links UIKit/SwiftData.
+
+Consequences:
+
+- **You cannot run the tests here.** Verify changes by careful review, by
+  tracing the logic, and by a brace/paren/bracket **balance check** on every
+  file you touch, e.g.:
+  ```bash
+  python3 -c "s=open('PATH').read(); print({k:s.count(a)-s.count(b) for k,a,b in [('()','(',')'),('[]','[',']'),('{}','{','}')]})"
+  ```
+- **Never claim the tests passed.** Say plainly that they were written and
+  reviewed but not executed, and that a human should run **⌘U** before merge.
+  Put that note in the PR body.
+- Balance checks catch mismatched delimiters, not type errors. Read the code you
+  write as if compiling it in your head.
+
+## Hard invariants — do not break these
+
+These are load-bearing; breaking one stops a target compiling or re-opens a
+closed security issue. Full list in `ARCHITECTURE.md` → Invariants.
+
+1. **Writes go through `FuelEntryDraft`.** Every new/edited `FuelEntry` is built
+   from a `FuelEntryDraft` (failable init requires positive, finite odometer /
+   gallons / price; owns the field mapping). Never `context.insert` a hand-built
+   `FuelEntry`. New input sources (imports, intents, shared submissions) build a
+   draft too.
+2. **Models stay CloudKit-shaped.** Every `@Model` attribute has a default
+   value, relationships are optional, no unique constraints. New model → add it
+   to `ModelContainerFactory.schema` **and** update the schema-names test in
+   `SharedLogicTests`.
+3. **Entitlements stay empty.** The app must keep building on a free personal
+   Apple ID. Don't commit populated entitlements or add iCloud/App Group/Push
+   capabilities that break the local build — gate the feature and document the
+   prerequisite (see the README's iCloud-sync section for the pattern).
+4. **`Shared/` imports no UIKit/Vision/ImageIO/MapKit.** Those aren't available
+   on watchOS. Image/camera/location work is iOS-only, under `FuelTracker/`.
+5. **Untrusted images use the bounded decode** (`ReceiptImage`), never raw
+   `UIImage(data:)`. Persist only re-encoded, size-bounded data.
+
+## Adding files (Xcode 16)
+
+The project uses `PBXFileSystemSynchronizedRootGroup` sync roots
+(`FuelTracker`, `FuelTrackerWatch`, `Shared`, `FuelTrackerTests`). Files placed
+under those folders are **included automatically** — you do **not** edit
+`project.pbxproj` to add a source file. Just create the file in the right
+directory. Respect the `Shared/` framework rule when choosing where it goes.
+
+## Git & PR workflow
+
+- Develop on the session's designated feature branch. **One PR per branch.**
+- After a PR merges, restart the branch from the latest `main`
+  (`git fetch origin main && git checkout -B <branch> origin/main`) rather than
+  stacking on merged history. If a follow-up commit was pushed *after* the PR
+  merged, it needs its **own new PR** — rebase it onto the merged `main` first.
+- Force-push only with `--force-with-lease`, and only when the branch contains
+  just already-merged history.
+- Commit messages end with the required trailers the harness specifies
+  (`Co-Authored-By:` and `Claude-Session:`). **Never** put the raw model
+  identifier, secrets, tokens, or internal hostnames in commits, PRs, code, or
+  these docs.
+- Only open a PR when asked. Check for a PR template before writing the body.
+
+## Testing conventions
+
+- **Swift Testing**, not XCTest: `@Test`, `#expect`, `#require`,
+  `@MainActor struct` suites. In-memory store via
+  `ModelContainerFactory.makeInMemory()`.
+- **Hostile-input testing is expected.** Don't submit only happy-path tests —
+  cover zero/negative/non-finite values, duplicates, clock skew, OCR noise,
+  oversized/garbage payloads. The bar: never crash, never divide by zero, never
+  fabricate a statistic. See `HostileInputTests` and `SecurityHardeningTests`.
+- **View rendering:** the `render(...)` harness and its `Scenario` helpers are
+  `private` to `ViewRenderingTests.swift`. New view render tests must be added
+  **inside that file** to reach them.
+- Hold the `ModelContainer` for the test's lifetime — a deallocated container
+  resets its context and invalidates every model it owned.
+
+## Gotchas worth remembering
+
+- `FuelEntry` / `PendingFillUp` store `fuelGradeRaw: String`; the `fuelGrade`
+  computed property falls back to `.other` for an unrecognized raw value. Test
+  that fallback when touching grades.
+- `FuelEntryDraft` drops a receipt larger than `maxReceiptBytes` (4 MB) at the
+  write boundary — the record may still report `hasReceipt`, but promotion
+  nulls an oversized blob.
+- `FuelEntryDraft` rejects **non-finite** numbers, not just non-positive: `NaN`
+  fails `> 0` already, and the explicit `isFinite` guard also stops `+∞` from
+  slipping through as "positive."
+- Odometer/number formatting rounding can differ across iOS versions
+  (banker's vs half-away) — assert unambiguous values, or accept both roundings
+  for an exact midpoint.
+- Currency is locale-aware (`Format.currency`), but volume/distance/economy are
+  currently hard-coded US units. A units preference is tracked as a separate
+  issue; don't assume it exists yet.
+- `Winner.notContested` (not `.none`) is the showdown "tie" case — the rename
+  avoided an optional-chaining footgun (`row("x")?.winner == .none`).
+
+## Before you open a PR
+
+- [ ] Change goes through `FuelEntryDraft` if it creates/edits entries.
+- [ ] New `@Model`? Registered in `ModelContainerFactory.schema` **and** the
+      schema test updated.
+- [ ] Entitlements still empty; no free-account-breaking capability added.
+- [ ] `Shared/` still free of UIKit/Vision/ImageIO/MapKit.
+- [ ] Balance check clean on every touched file.
+- [ ] Tests written for the change, including a hostile/edge case.
+- [ ] PR body notes that the suite was **not run here** — flag a ⌘U before merge.
+- [ ] No secrets, tokens, hostnames, or model identifier in the diff.

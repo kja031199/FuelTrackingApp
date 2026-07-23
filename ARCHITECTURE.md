@@ -3,6 +3,10 @@
 How FuelTracker is put together, and the invariants that keep it building and
 safe. Read this before moving code between folders or targets.
 
+See also: [`CONTRIBUTING.md`](CONTRIBUTING.md) for the working conventions, and
+[`CLAUDE.md`](CLAUDE.md) for the same as a quick operating manual (used by AI
+assistants, useful to anyone).
+
 ## Targets
 
 | Target | Contains | Depends on |
