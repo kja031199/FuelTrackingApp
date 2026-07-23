@@ -57,6 +57,20 @@ private enum Scenario {
         Calendar.current.date(from: DateComponents(year: year, month: month, day: dayOfMonth))!
     }
 
+    /// A vehicle plus a pending submission targeting it, so the owner's review
+    /// queue has a real row (vehicle resolves, details render, Approve enabled).
+    static func withPendingSubmission() -> (ModelContainer, Vehicle) {
+        let (container, vehicle) = vehicleOnly()
+        let draft = FuelEntryDraft(
+            date: day(2025, 3, 1), odometer: 22_500, gallons: 11.2, pricePerGallon: 3.45,
+            station: "Costco", receiptImageData: Data([0x1, 0x2, 0x3])
+        )!
+        container.mainContext.insert(
+            PendingFillUp.from(draft: draft, submitterName: "Jamie", vehicleID: vehicle.id)
+        )
+        return (container, vehicle)
+    }
+
     /// A vehicle with six deterministic fill-ups (one partial) spanning
     /// three months, enough to light up every KPI and chart.
     static func populated() -> (ModelContainer, Vehicle) {
@@ -269,6 +283,44 @@ struct ScreenRenderingTests {
             container.mainContext.insert(entry)
         }
         render(ShowdownView(vehicles: [left, right]), container: container)
+    }
+}
+
+// MARK: - Shareable-submission screens
+
+@MainActor
+struct SubmissionRenderingTests {
+    @Test func submitFormRendersForAVehicle() {
+        let (container, vehicle) = Scenario.vehicleOnly()
+        render(SubmitFillUpView(vehicle: vehicle), container: container)
+    }
+
+    @Test func reviewQueueRendersItsEmptyState() {
+        render(PendingSubmissionsView(), container: Scenario.empty())
+    }
+
+    @Test func reviewQueueRendersAPendingSubmission() {
+        // Vehicle resolves, the detail grid and receipt paperclip render, and
+        // Approve is enabled.
+        let (container, _) = Scenario.withPendingSubmission()
+        render(PendingSubmissionsView(), container: container)
+    }
+
+    @Test func reviewQueueRendersAnOrphanedSubmission() {
+        // The submission points at a vehicle id that no longer exists, so the
+        // "vehicle removed" warning shows and Approve is disabled.
+        let container = ModelContainerFactory.makeInMemory()
+        let draft = FuelEntryDraft(date: .now, odometer: 100, gallons: 8, pricePerGallon: 3.1)!
+        container.mainContext.insert(
+            PendingFillUp.from(draft: draft, submitterName: "", vehicleID: UUID())
+        )
+        render(PendingSubmissionsView(), container: container)
+    }
+
+    @Test func vehiclesScreenShowsTheReviewInboxWhenSubmissionsExist() {
+        // A pending submission switches on the "Review 1 submission" toolbar item.
+        let (container, vehicle) = Scenario.withPendingSubmission()
+        render(VehiclesView(selectedVehicleID: .constant(vehicle.id.uuidString)), container: container)
     }
 }
 
