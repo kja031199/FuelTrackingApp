@@ -15,14 +15,17 @@ private func render(
     container: ModelContainer,
     units: UnitSettings = UnitSettings(),
     privacy: PrivacySettings = PrivacySettings(),
-    appLock: AppLock = AppLock(authenticator: BiometricAuthenticator())
+    appLock: AppLock? = nil
 ) {
+    // Construct the default lock inside the body: AppLock's init is
+    // @MainActor-isolated, which a default argument expression can't call.
+    let lock = appLock ?? AppLock(authenticator: BiometricAuthenticator())
     let hosting = UIHostingController(
         rootView: AnyView(
             view.modelContainer(container)
                 .environment(units)
                 .environment(privacy)
-                .environment(appLock)
+                .environment(lock)
         )
     )
     let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
