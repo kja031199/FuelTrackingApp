@@ -1,0 +1,74 @@
+name: CI
+
+# Builds the app and runs the Swift Testing suite on an iOS Simulator for every
+# pull request, so changes are actually executed rather than only reviewed.
+#
+# No paid Apple Developer account is required: Simulator builds don't need code
+# signing or a development team (DEVELOPMENT_TEAM ships empty), so this works on
+# the same free-account setup the project targets.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push to the same branch supersedes an in-flight run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build & test (iOS Simulator)
+    # `macos-latest` keeps the toolchain current with no maintenance. Pin it
+    # (e.g. `macos-15`) if you'd rather have byte-reproducible runs.
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      # Simulator device names change with each Xcode release, so resolve one
+      # at run time instead of hard-coding "iPhone 16".
+      - name: Pick an iOS Simulator
+        id: simulator
+        run: |
+          set -euo pipefail
+          udid=$(xcrun simctl list devices available --json \
+            | jq -r '[.devices[][] | select(.name | startswith("iPhone")) | .udid] | last // empty')
+          if [ -z "$udid" ]; then
+            echo "::error::No available iPhone Simulator on this runner."
+            xcrun simctl list devices available
+            exit 1
+          fi
+          name=$(xcrun simctl list devices available --json \
+            | jq -r --arg udid "$udid" '[.devices[][] | select(.udid == $udid) | .name] | first')
+          echo "Using simulator: $name ($udid)"
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+
+      # Note: the iOS target embeds the watch app, so this also builds the
+      # watchOS target for its simulator. Only FuelTrackerTests is executed —
+      # it covers all shared logic.
+      - name: Build and test
+        run: |
+          set -euo pipefail
+          xcodebuild test \
+            -project FuelTracker.xcodeproj \
+            -scheme FuelTracker \
+            -destination "id=${{ steps.simulator.outputs.udid }}" \
+            -enableCodeCoverage YES \
+            -resultBundlePath TestResults.xcresult
+
+      - name: Upload test results
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults.xcresult
+          retention-days: 7

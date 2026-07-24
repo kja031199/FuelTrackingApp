@@ -31,8 +31,8 @@ apply (e.g. there are no tests to write for a docs-only change).
    Then compare the actual changes against the originating issue and the
    request, and confirm the work matches what was asked — flag any gaps.
 
-Open the PR (when asked) noting that the suite wasn't executed in CI, so a
-reviewer should run **⌘U** before merge.
+Open the PR (when asked). CI builds the app and runs the suite on every pull
+request — check that status rather than asserting the tests pass yourself.
 
 ## The rules that matter
 
@@ -97,6 +97,9 @@ decompression-bomb vector. Persist only re-encoded, size-bounded data.
 
 - Tests use **Swift Testing** (`@Test`, `#expect`, `#require`), not XCTest.
 - Run them with **⌘U** in Xcode (Product → Test) on the FuelTracker scheme.
+- **CI runs the suite on every pull request** (`.github/workflows/ci.yml`) — a
+  macOS runner builds the app and tests it on an iOS Simulator. That check is
+  the authority on whether the tests pass; a red check blocks merge.
 - **Don't just test the happy path.** The suite holds a deliberate hostile-input
   layer (`HostileInputTests`, `SecurityHardeningTests`, adversarial rendering):
   zero/negative/non-finite values, duplicate odometers, clock skew, OCR noise,
@@ -116,9 +119,10 @@ layout of the suite.
   of commits, code, and docs.
 - After a PR merges, start follow-up work from a fresh branch off the latest
   `main` rather than stacking onto already-merged history.
-- CI cannot run the iOS test suite (see `CLAUDE.md` for why), so a human should
-  run **⌘U** before merging. Call this out in the PR when your change wasn't
-  executed on a device.
+- CI runs the suite on each PR, so let that check — not a hand-written claim —
+  confirm the tests pass. Authoring still happens without Xcode (see
+  `CLAUDE.md`), so review the code carefully before pushing; CI catches what
+  review can't (type errors, actual failures), not the reverse.
 
 ## Where to read more
 

@@ -51,11 +51,12 @@ Consequences:
   ```bash
   python3 -c "s=open('PATH').read(); print({k:s.count(a)-s.count(b) for k,a,b in [('()','(',')'),('[]','[',']'),('{}','{','}')]})"
   ```
-- **Never claim the tests passed.** Say plainly that they were written and
-  reviewed but not executed, and that a human should run **⌘U** before merge.
-  Put that note in the PR body.
+- **Never claim the tests passed.** You didn't run them. **CI does** — a macOS
+  runner builds and tests every PR (`.github/workflows/ci.yml`), and that check
+  is the authority. In the PR body, point at CI rather than asserting a result.
 - Balance checks catch mismatched delimiters, not type errors. Read the code you
-  write as if compiling it in your head.
+  write as if compiling it in your head — CI is the backstop, not a substitute
+  for writing code that compiles.
 
 ## The workflow — follow this for every change
 
@@ -89,7 +90,8 @@ merely inconvenient.
    request, and confirm the work matches what was asked. Note any gaps.
 
 Then run the balance check on every touched file, and open the PR (only when
-asked) with a note that the suite was not run here.
+asked) — CI runs the suite on it, so point at that check instead of claiming a
+test result.
 
 ## Hard invariants — do not break these
 
@@ -241,5 +243,5 @@ directory. Respect the `Shared/` framework rule when choosing where it goes.
 - [ ] `Shared/` still free of UIKit/Vision/ImageIO/MapKit.
 - [ ] Balance check clean on every touched file.
 - [ ] Tests written for the change, including a hostile/edge case.
-- [ ] PR body notes that the suite was **not run here** — flag a ⌘U before merge.
+- [ ] PR body points at the **CI check** for test results — never claims a pass.
 - [ ] No secrets, tokens, hostnames, or model identifier in the diff.
