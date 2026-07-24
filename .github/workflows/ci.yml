@@ -6,11 +6,32 @@ name: CI
 # No paid Apple Developer account is required: Simulator builds don't need code
 # signing or a development team (DEVELOPMENT_TEAM ships empty), so this works on
 # the same free-account setup the project targets.
+#
+# Docs-only changes skip this workflow. On a private repo macOS runners bill at
+# a 10x multiplier against the monthly Actions allowance, and a Markdown edit
+# can't break the build, so spending ~10 minutes of quota on one is waste.
+# Deliberately NOT ignored: `.github/**`, so a change to this workflow is still
+# validated by running it. (Revisit `**/*.md` if a DocC build check is ever
+# added — DocC articles are Markdown and could then affect the result.)
+#
+# Note: because skipped runs report no status, don't make this a *required*
+# status check while `paths-ignore` is in place — a docs-only PR would wait
+# forever for a check that never runs.
 
+# (The two lists are duplicated on purpose: GitHub Actions doesn't support YAML
+# anchors/aliases, so keep them in sync by hand.)
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.gitignore'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.gitignore'
 
 # A newer push to the same branch supersedes an in-flight run.
 concurrency:
