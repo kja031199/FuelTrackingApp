@@ -59,6 +59,9 @@ jobs:
           # Which simulator runtimes are already installed? If watchOS is
           # missing, building the embedded watch app makes Xcode fetch it on
           # demand, which can dominate the run time.
+          # Confirmed from a real run: the WatchSimulator SDK is already present
+          # on the image, so the embedded watch build does NOT trigger a runtime
+          # download — it just costs a second compile of the shared layer.
           xcrun simctl runtime list || true
 
       # Simulator device names change with each Xcode release, so resolve one
@@ -91,8 +94,15 @@ jobs:
       #   -enableCodeCoverage NO          skip profiling instrumentation
       #                                   (coverage still available locally ⌘U)
       #   -skipMacroValidation            don't re-validate macro fingerprints
-      # -showBuildTimingSummary prints where the time actually goes, so the next
-      # round of tuning is measured rather than guessed.
+      # Diagnostics, because a 20-minute build for a project this size is not
+      # normal and shouldn't be tuned by guesswork:
+      #   -showBuildTimingSummary        per-task build timing
+      #   -warn-long-expression-type-checking / -warn-long-function-bodies
+      #                                  flag any expression or body taking
+      #                                  >500ms to type-check — the usual cause
+      #                                  of pathological SwiftUI compile times
+      # Test timeouts bound the damage if a test hangs: on a 10x-billed runner a
+      # stuck test would otherwise burn the allowance until the job timeout.
       - name: Build and test
         run: |
           set -euo pipefail
@@ -104,8 +114,12 @@ jobs:
             -enableCodeCoverage NO \
             -skipMacroValidation \
             -showBuildTimingSummary \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 120 \
+            -maximum-test-execution-time-allowance 300 \
             ONLY_ACTIVE_ARCH=YES \
-            COMPILER_INDEX_STORE_ENABLE=NO
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            OTHER_SWIFT_FLAGS='$(inherited) -Xfrontend -warn-long-expression-type-checking=500 -Xfrontend -warn-long-function-bodies=500'
 
       - name: Upload test results
         if: ${{ failure() }}
