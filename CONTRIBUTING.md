@@ -108,6 +108,22 @@ decompression-bomb vector. Persist only re-encoded, size-bounded data.
   coverage, not only the expected case.
 - View bodies are exercised in `ViewRenderingTests`, which hosts screens in a
   real window and forces layout.
+- **Tests stay off real device services.** Anything hardware-backed goes behind
+  a protocol and is stubbed. Concretely, the render harness injects
+  `StubAuthenticator`, never `BiometricAuthenticator` — `AppLock.init` and
+  `SettingsView`'s body both ask whether the device can authenticate, and with
+  the real implementation that's an `LAContext` call to a system daemon on every
+  render, on a CI simulator that has no biometric and no passcode. Tests that
+  persist a preference use a single-use `UserDefaults(suiteName:)` rather than
+  `.standard`, so state never leaks between tests.
+- **`xcodebuild`'s `-test-timeouts-enabled` and
+  `-default-test-execution-time-allowance` do nothing here** — they bound XCTest
+  cases, and this suite is Swift Testing. Bound an individual test with a
+  `.timeLimit` trait; CI's step timeouts bound the job.
+- **CI runs on a 10x-billed macOS runner.** A push to a branch with a run in
+  flight cancels it and restarts from zero, so batch changes into one push
+  instead of trickling commits onto an open PR. A healthy run is a ~60-second
+  build plus a few seconds of tests; a 20-minute run means something hung.
 
 See the "Running the tests" section of the [README](README.md) for the full
 layout of the suite.

@@ -58,6 +58,28 @@ Consequences:
   write as if compiling it in your head — CI is the backstop, not a substitute
   for writing code that compiles.
 
+### What CI actually costs, and how not to waste it
+
+`.github/workflows/ci.yml` runs on a **macOS** runner, which bills at a **10x
+multiplier** against a private repo's monthly Actions allowance — roughly **200
+macOS minutes/month**. Treat every run as expensive:
+
+- **Batch your pushes.** `concurrency: cancel-in-progress: true` means a second
+  push to the same branch cancels the in-flight run and starts over, throwing
+  away everything it had already billed. Push once, then wait. Do **not** push a
+  "small extra fix" while a run is in flight.
+- **Measured shape of a healthy run:** build ≈ **60 seconds**, suite runs in
+  seconds. If a run takes 20+ minutes, it is *hung*, not slow — read the
+  timestamps in the log before tuning compiler flags. (An earlier round of
+  tuning chased a "20-minute build" that a timestamped log disproved.)
+- The job is capped at 20 minutes with tighter per-step timeouts, so a hang
+  fails fast and names the step it died in.
+- Tests run **serially** (`-parallel-testing-enabled NO`): the suite is short and
+  main-actor-bound, so parallel workers buy nothing and only interleave the
+  output. With one worker, the last test named in the log is the one that stuck.
+- Docs-only changes are skipped via `paths-ignore`. Because skipped runs report
+  no status, don't make this a *required* check while that's in place.
+
 ## The workflow — follow this for every change
 
 Every piece of work runs through four role phases, in order. Wear each hat
@@ -151,6 +173,23 @@ directory. Respect the `Shared/` framework rule when choosing where it goes.
 - **View rendering:** the `render(...)` harness and its `Scenario` helpers are
   `private` to `ViewRenderingTests.swift`. New view render tests must be added
   **inside that file** to reach them.
+- **Tests never touch real device services.** The render harness defaults to
+  `StubAuthenticator(canAuthenticate: true, result: true)` — never
+  `BiometricAuthenticator`. `AppLock.init` calls `canAuthenticate` and
+  `SettingsView`'s body reads `canUseLock`, so a real authenticator turns every
+  render into an `LAContext` round-trip to a system daemon on a headless CI
+  simulator. Same rule for any future hardware-backed service: put it behind a
+  protocol and stub it. Pass `appLock:` explicitly only to pin a *different*
+  state (locked, or a device that can't authenticate).
+- **Persisted preferences use a throwaway suite.** `throwawayDefaults()` in
+  `ViewRenderingTests.swift` (and `freshDefaults()` in `AppLockTests.swift`)
+  hands out a single-use `UserDefaults(suiteName:)`, so a test that flips a
+  stored flag can't leak it into the next test. Never write to `.standard`.
+- **Swift Testing ignores xcodebuild's test-timeout flags.**
+  `-test-timeouts-enabled` / `-default-test-execution-time-allowance` bound
+  *XCTest* cases only; they were tried in CI and a hung run sailed straight past
+  them. To bound a single test, use a `.timeLimit` trait; the workflow's
+  step-level `timeout-minutes` is what actually caps a hang.
 - Hold the `ModelContainer` for the test's lifetime — a deallocated container
   resets its context and invalidates every model it owned.
 
