@@ -151,6 +151,10 @@ The thin watch-only view structs aren't in the iOS test bundle (watchOS tests ru
 
 FuelTracker keeps your data on your device — there's no server, no account, and no analytics or third-party tracking. Data syncs only to your own private iCloud (optional, off by default), and station detection sends coordinates to Apple Maps only when you use it. Full details, plus the App Store "App Privacy" data-disclosure checklist, are in [`docs/privacy.md`](docs/privacy.md). (Before submitting to the App Store, fill in the contact/URL placeholders there and host the policy at a public link.)
 
+## Documentation
+
+The project ships a **DocC catalog** (`FuelTracker/FuelTracker.docc`) with browsable reference docs for the domain logic — including two essays, *How MPG Is Computed* and *Scanning Heuristics*, plus symbol docs for the core types. Build it in Xcode with **Product → Build Documentation** (**⌃⌘D**); it opens in the Developer Documentation window. Nothing needs to be hosted — building locally is enough.
+
 ## Contributing
 
 Before making changes, read [`CONTRIBUTING.md`](CONTRIBUTING.md) for the working conventions (the `FuelEntryDraft` write chokepoint, the CloudKit-shaped model rules, the empty-entitlements constraint, and the testing bar) and [`ARCHITECTURE.md`](ARCHITECTURE.md) for how the targets and layers fit together. [`CLAUDE.md`](CLAUDE.md) is the same guidance as a terse operating manual — written for AI assistants, handy for anyone getting oriented fast.

@@ -125,4 +125,5 @@ layout of the suite.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — targets, layers, and the load-bearing invariants.
 - [`docs/security-review.md`](docs/security-review.md) — threat model and hardening decisions.
 - [`README.md`](README.md) — features, running on-device, enabling iCloud sync, the test suite.
+- **DocC catalog** (`FuelTracker/FuelTracker.docc`) — browsable domain reference; the "How MPG Is Computed" and "Scanning Heuristics" essays explain the subtle logic. Build with ⌃⌘D.
 - [`CLAUDE.md`](CLAUDE.md) — the same conventions as a quick operating manual for AI assistants.
