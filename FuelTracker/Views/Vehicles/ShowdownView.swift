@@ -188,8 +188,8 @@ struct ShowdownMPGChart: View {
     var body: some View {
         // Economy is non-linear across units, so convert the plotted values.
         let (leftLabel, rightLabel) = labels
-        let leftConverted = leftSeries.mapValues { units.economy.fromMPG($0) ?? $0 }
-        let rightConverted = rightSeries.mapValues { units.economy.fromMPG($0) ?? $0 }
+        let leftConverted = leftSeries.mapValues { units.economy.fromMPG($0) ?? $0 }.downsampled(max: 500)
+        let rightConverted = rightSeries.mapValues { units.economy.fromMPG($0) ?? $0 }.downsampled(max: 500)
         let axisLabel = units.economy.abbreviation
         Chart {
             ForEach(leftConverted) { point in

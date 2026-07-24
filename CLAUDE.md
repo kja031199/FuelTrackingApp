@@ -27,8 +27,8 @@ user's private iCloud.
 - `Shared/Support/` — formatters, `FillUpFormModel`, `ModelContainerFactory`,
   the units system (`MeasurementUnits`, `UnitSettings`), privacy/security
   (`PrivacySettings`, `LocationPrivacy`, `StoreProtection`, `AppLock`), the
-  list search/filter (`FillUpFilter`, `DashboardTimeRange`), and the first-run
-  gate (`OnboardingGate`).
+  list search/filter (`FillUpFilter`, `DashboardTimeRange`), the first-run
+  gate (`OnboardingGate`), and the stats memo (`FuelStatisticsMemo`).
 - `FuelTracker/` — the iPhone app (thin views) + iOS-only `Scanning/` importers
   and `Services/` (Vision, ImageIO, CoreLocation/MapKit, PhotosUI).
 - `FuelTrackerWatch/` — the watch app (thin views).
@@ -196,6 +196,15 @@ directory. Respect the `Shared/` framework rule when choosing where it goes.
   *printed* station name still applies. `LocationPrivacy.purgeSavedLocations(in:)`
   nils coordinates on every `FuelEntry` **and** `PendingFillUp`. If you add a new
   location source, gate it on this flag and clear it in the purge.
+- `FuelStatistics` is rebuilt only when its inputs change, via `FuelStatisticsMemo`
+  — a **plain (non-observable) class held in a view's `@State`**; `statistics(for:)`
+  mutates only its private cache, so calling it in `body` never triggers a
+  re-render or a "modifying state during update" warning. The key hashes only
+  **stat-affecting** fields (id/date/odometer/gallons/price/full-tank/missed/grade),
+  so editing a station or notes correctly doesn't invalidate. Views compute stats
+  through the memo, never `FuelStatistics(entries:)` inline. Line charts
+  **downsample for display** above 500 points (`[DateValuePoint].downsampled(max:)`,
+  endpoint-preserving) — display-only; KPIs/averages still come from the full data.
 - First-run onboarding (`WelcomeView`) shows only when
   `OnboardingGate.shouldOnboard(hasCompleted:vehicleCount:)` is true — i.e. no
   vehicles **and** the `@AppStorage("hasOnboarded")` flag isn't set. It's decided

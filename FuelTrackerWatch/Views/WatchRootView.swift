@@ -6,6 +6,7 @@ struct WatchRootView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Vehicle.createdAt) private var vehicles: [Vehicle]
     @AppStorage("watchSelectedVehicleID") private var selectedVehicleID: String = ""
+    @State private var statsMemo = FuelStatisticsMemo()
 
     private var selectedVehicle: Vehicle? {
         vehicles.first { $0.id.uuidString == selectedVehicleID } ?? vehicles.first
@@ -30,7 +31,7 @@ struct WatchRootView: View {
                         WatchFillUpForm(vehicle: selectedVehicle)
 
                         if let vehicle = selectedVehicle {
-                            let statistics = FuelStatistics(entries: vehicle.fillUps)
+                            let statistics = statsMemo.statistics(for: vehicle.fillUps)
                             if statistics.fillUpCount > 0 {
                                 WatchKPISection(statistics: statistics)
                                 WatchChartsSection(statistics: statistics)
