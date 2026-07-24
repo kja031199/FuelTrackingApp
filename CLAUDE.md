@@ -33,6 +33,9 @@ user's private iCloud.
   and `Services/` (Vision, ImageIO, CoreLocation/MapKit, PhotosUI).
 - `FuelTrackerWatch/` — the watch app (thin views).
 - `FuelTrackerTests/` — Swift Testing unit + rendering tests.
+- `FuelTracker/FuelTracker.docc/` — DocC catalog (domain essays + curated
+  symbol docs); build with ⌃⌘D. Keep the essays in sync when the MPG or
+  scanning logic changes.
 
 ## Environment reality — read this first
 
