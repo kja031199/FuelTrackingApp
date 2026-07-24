@@ -16,6 +16,27 @@ extension Array where Element == DateValuePoint {
     func mapValues(_ transform: (Double) -> Double) -> [DateValuePoint] {
         map { DateValuePoint(id: $0.id, date: $0.date, value: transform($0.value)) }
     }
+
+    /// Evenly reduces the series to at most `max` points for **display**,
+    /// always keeping the first and last and picking real samples (no synthetic
+    /// averaging), so a chart isn't handed thousands of marks. Returns the
+    /// series unchanged when it's already at or under `max`. Statistics are
+    /// computed from the full set elsewhere and are unaffected.
+    func downsampled(max: Int) -> [DateValuePoint] {
+        guard max >= 2, count > max else { return self }
+        let step = Double(count - 1) / Double(max - 1)
+        var result: [DateValuePoint] = []
+        result.reserveCapacity(max)
+        var lastIndex = -1
+        for i in 0..<max {
+            let index = Int((Double(i) * step).rounded())
+            if index != lastIndex {
+                result.append(self[index])
+                lastIndex = index
+            }
+        }
+        return result
+    }
 }
 
 /// Line chart for one metric over time, shared by both platforms.
@@ -32,19 +53,27 @@ struct MetricLineChart: View {
     let valueLabel: (Double) -> String
     /// Optional custom y-axis label formatting; default axis otherwise.
     var yAxisLabel: ((Double) -> String)? = nil
+    /// Above this many points, the plotted series is downsampled for display.
+    var downsampleThreshold = 500
 
     @State private var selectedDate: Date?
 
+    /// The points actually drawn — downsampled for very long histories. The
+    /// average rule still comes from statistics over the full dataset.
+    private var displayPoints: [DateValuePoint] {
+        points.downsampled(max: downsampleThreshold)
+    }
+
     private var selectedPoint: DateValuePoint? {
         guard !compact, let selectedDate else { return nil }
-        return points.min {
+        return displayPoints.min {
             abs($0.date.timeIntervalSince(selectedDate)) < abs($1.date.timeIntervalSince(selectedDate))
         }
     }
 
     var body: some View {
         Chart {
-            ForEach(points) { point in
+            ForEach(displayPoints) { point in
                 LineMark(
                     x: .value("Date", point.date),
                     y: .value("Value", point.value)

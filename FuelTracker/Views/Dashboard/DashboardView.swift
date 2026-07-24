@@ -10,6 +10,7 @@ struct DashboardView: View {
     @State private var timeRange: DashboardTimeRange = .all
     @State private var showingAddSheet = false
     @State private var entryBeingReviewed: FuelEntry?
+    @State private var statsMemo = FuelStatisticsMemo()
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(UnitSettings.self) private var unitSettings: UnitSettings?
 
@@ -30,8 +31,9 @@ struct DashboardView: View {
     }
 
     var body: some View {
-        // Computed once per render; every KPI and chart reads from this.
-        let statistics = FuelStatistics(entries: filteredEntries)
+        // Memoized: rebuilt only when the filtered entries actually change, not
+        // on every render (e.g. a unit switch leaves the canonical stats alone).
+        let statistics = statsMemo.statistics(for: filteredEntries)
 
         NavigationStack {
             Group {

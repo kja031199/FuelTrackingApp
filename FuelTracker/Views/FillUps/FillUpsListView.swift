@@ -12,6 +12,7 @@ struct FillUpsListView: View {
     @State private var showingAddSheet = false
     @State private var entryBeingEdited: FuelEntry?
     @State private var filter = FillUpFilter()
+    @State private var statsMemo = FuelStatisticsMemo()
     @Environment(UnitSettings.self) private var unitSettings: UnitSettings?
 
     private var units: UnitPreferences { unitSettings?.preferences ?? .us }
@@ -31,8 +32,9 @@ struct FillUpsListView: View {
     }
 
     var body: some View {
-        // Computed once per render and shared by every row.
-        let statistics = FuelStatistics(entries: selectedVehicle?.fillUps ?? [])
+        // Memoized over the full history (unaffected by the search/filter), so
+        // scrolling or changing filters doesn't rebuild the stats.
+        let statistics = statsMemo.statistics(for: selectedVehicle?.fillUps ?? [])
 
         NavigationStack {
             Group {
