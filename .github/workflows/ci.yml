@@ -44,16 +44,22 @@ jobs:
     # `macos-latest` keeps the toolchain current with no maintenance. Pin it
     # (e.g. `macos-15`) if you'd rather have byte-reproducible runs.
     runs-on: macos-latest
-    timeout-minutes: 45
+    # Deliberately tight: macOS minutes bill at 10x, so a hung or pathologically
+    # slow run should fail fast rather than quietly burn the monthly allowance.
+    timeout-minutes: 30
 
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Show toolchain
         run: |
           xcodebuild -version
           swift --version
+          # Which simulator runtimes are already installed? If watchOS is
+          # missing, building the embedded watch app makes Xcode fetch it on
+          # demand, which can dominate the run time.
+          xcrun simctl runtime list || true
 
       # Simulator device names change with each Xcode release, so resolve one
       # at run time instead of hard-coding "iPhone 16".
@@ -73,9 +79,20 @@ jobs:
           echo "Using simulator: $name ($udid)"
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
 
-      # Note: the iOS target embeds the watch app, so this also builds the
-      # watchOS target for its simulator. Only FuelTrackerTests is executed —
-      # it covers all shared logic.
+      # The suite itself runs in ~10 seconds; essentially all of this step is
+      # compilation. Note the iOS target has an "Embed Watch Content" phase and
+      # an explicit dependency on the watch app, so this also compiles the whole
+      # shared layer a second time for watchOS. That can't be switched off from
+      # the command line; issue #76 tracks the structural fix.
+      #
+      # The flags below trim work that only matters to Xcode's UI, not to CI:
+      #   COMPILER_INDEX_STORE_ENABLE=NO  skip index-while-building
+      #   ONLY_ACTIVE_ARCH=YES            build one slice, not a fat binary
+      #   -enableCodeCoverage NO          skip profiling instrumentation
+      #                                   (coverage still available locally ⌘U)
+      #   -skipMacroValidation            don't re-validate macro fingerprints
+      # -showBuildTimingSummary prints where the time actually goes, so the next
+      # round of tuning is measured rather than guessed.
       - name: Build and test
         run: |
           set -euo pipefail
@@ -83,12 +100,16 @@ jobs:
             -project FuelTracker.xcodeproj \
             -scheme FuelTracker \
             -destination "id=${{ steps.simulator.outputs.udid }}" \
-            -enableCodeCoverage YES \
-            -resultBundlePath TestResults.xcresult
+            -resultBundlePath TestResults.xcresult \
+            -enableCodeCoverage NO \
+            -skipMacroValidation \
+            -showBuildTimingSummary \
+            ONLY_ACTIVE_ARCH=YES \
+            COMPILER_INDEX_STORE_ENABLE=NO
 
       - name: Upload test results
         if: ${{ failure() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: test-results
           path: TestResults.xcresult
