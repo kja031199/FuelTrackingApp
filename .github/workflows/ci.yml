@@ -1,0 +1,148 @@
+name: CI
+
+# Builds the app and runs the Swift Testing suite on an iOS Simulator for every
+# pull request, so changes are actually executed rather than only reviewed.
+#
+# No paid Apple Developer account is required: Simulator builds don't need code
+# signing or a development team (DEVELOPMENT_TEAM ships empty), so this works on
+# the same free-account setup the project targets.
+#
+# Docs-only changes skip this workflow. On a private repo macOS runners bill at
+# a 10x multiplier against the monthly Actions allowance, and a Markdown edit
+# can't break the build, so spending ~10 minutes of quota on one is waste.
+# Deliberately NOT ignored: `.github/**`, so a change to this workflow is still
+# validated by running it. (Revisit `**/*.md` if a DocC build check is ever
+# added — DocC articles are Markdown and could then affect the result.)
+#
+# Note: because skipped runs report no status, don't make this a *required*
+# status check while `paths-ignore` is in place — a docs-only PR would wait
+# forever for a check that never runs.
+
+# (The two lists are duplicated on purpose: GitHub Actions doesn't support YAML
+# anchors/aliases, so keep them in sync by hand.)
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.gitignore'
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.gitignore'
+
+# A newer push to the same branch supersedes an in-flight run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build & test (iOS Simulator)
+    # `macos-latest` keeps the toolchain current with no maintenance. Pin it
+    # (e.g. `macos-15`) if you'd rather have byte-reproducible runs.
+    runs-on: macos-latest
+    # Deliberately tight: macOS minutes bill at 10x, so a hung or pathologically
+    # slow run should fail fast rather than quietly burn the monthly allowance.
+    # A healthy run is ~4 minutes (≈1 min build + seconds of tests); 20 leaves
+    # generous headroom while capping a hang at ~200 billed minutes instead of
+    # 300. Per-step timeouts below fail even faster and say *where* it stuck.
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+
+      - name: Show toolchain
+        timeout-minutes: 3
+        run: |
+          xcodebuild -version
+          swift --version
+          # Confirmed from a real run: the WatchSimulator SDK is already present
+          # on the image, so the embedded watch build does NOT trigger a runtime
+          # download — it just costs a second compile of the shared layer.
+          # Kept as a cheap canary in case a future image drops it.
+          xcrun simctl runtime list || true
+
+      # Simulator device names change with each Xcode release, so resolve one
+      # at run time instead of hard-coding "iPhone 16".
+      - name: Pick an iOS Simulator
+        id: simulator
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          udid=$(xcrun simctl list devices available --json \
+            | jq -r '[.devices[][] | select(.name | startswith("iPhone")) | .udid] | last // empty')
+          if [ -z "$udid" ]; then
+            echo "::error::No available iPhone Simulator on this runner."
+            xcrun simctl list devices available
+            exit 1
+          fi
+          name=$(xcrun simctl list devices available --json \
+            | jq -r --arg udid "$udid" '[.devices[][] | select(.udid == $udid) | .name] | first')
+          echo "Using simulator: $name ($udid)"
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+          # Boot here rather than letting `xcodebuild test` do it implicitly, so
+          # a slow or wedged boot is attributed to this step (with its own
+          # timeout) instead of hiding inside the build-and-test step.
+          xcrun simctl boot "$udid" || true
+          xcrun simctl bootstatus "$udid" -b
+
+      # Measured on a real run: the build takes ~60 seconds and the suite runs in
+      # seconds. (An earlier comment here blamed a "20-minute build" — that was
+      # wrong; a timestamped log showed compilation finishing a minute in, with
+      # the time going to a hung *test* run. Don't re-tune the build on a hunch.)
+      #
+      # Note the iOS target has an "Embed Watch Content" phase and an explicit
+      # dependency on the watch app, so this also compiles the whole shared layer
+      # a second time for watchOS. That can't be switched off from the command
+      # line; issue #76 tracks the structural fix.
+      #
+      # The flags below trim work that only matters to Xcode's UI, not to CI:
+      #   COMPILER_INDEX_STORE_ENABLE=NO  skip index-while-building
+      #   ONLY_ACTIVE_ARCH=YES            build one slice, not a fat binary
+      #   -enableCodeCoverage NO          skip profiling instrumentation
+      #                                   (coverage still available locally ⌘U)
+      #   -skipMacroValidation            don't re-validate macro fingerprints
+      #   -parallel-testing-enabled NO    run the suite serially. The screens are
+      #                                   hosted in a real UIWindow on the main
+      #                                   actor, so parallel workers buy nothing
+      #                                   here and cost interleaved output — with
+      #                                   one worker the last test named in the
+      #                                   log is the one that stuck.
+      #   NSUnbufferedIO=YES              stream output as it happens, so a hang
+      #                                   doesn't swallow the preceding lines.
+      #
+      # Deliberately NOT used: -test-timeouts-enabled /
+      # -default-test-execution-time-allowance. Those bound *XCTest* cases only;
+      # this suite is Swift Testing, which ignores them (it wants a `.timeLimit`
+      # trait on the test instead). They were tried, and a hung run sailed past
+      # them — the step timeout below is what actually bounds the damage.
+      - name: Build and test
+        timeout-minutes: 12
+        run: |
+          set -euo pipefail
+          NSUnbufferedIO=YES xcodebuild test \
+            -project FuelTracker.xcodeproj \
+            -scheme FuelTracker \
+            -destination "id=${{ steps.simulator.outputs.udid }}" \
+            -resultBundlePath TestResults.xcresult \
+            -enableCodeCoverage NO \
+            -skipMacroValidation \
+            -parallel-testing-enabled NO \
+            ONLY_ACTIVE_ARCH=YES \
+            COMPILER_INDEX_STORE_ENABLE=NO
+
+      - name: Upload test results
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: test-results
+          path: TestResults.xcresult
+          retention-days: 7
+          # A step timeout kills xcodebuild mid-write, so the bundle may be
+          # absent or partial. Warn rather than fail — the job has already
+          # failed for the real reason and this shouldn't mask it.
+          if-no-files-found: warn

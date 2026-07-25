@@ -51,11 +51,34 @@ Consequences:
   ```bash
   python3 -c "s=open('PATH').read(); print({k:s.count(a)-s.count(b) for k,a,b in [('()','(',')'),('[]','[',']'),('{}','{','}')]})"
   ```
-- **Never claim the tests passed.** Say plainly that they were written and
-  reviewed but not executed, and that a human should run **⌘U** before merge.
-  Put that note in the PR body.
+- **Never claim the tests passed.** You didn't run them. **CI does** — a macOS
+  runner builds and tests every PR (`.github/workflows/ci.yml`), and that check
+  is the authority. In the PR body, point at CI rather than asserting a result.
 - Balance checks catch mismatched delimiters, not type errors. Read the code you
-  write as if compiling it in your head.
+  write as if compiling it in your head — CI is the backstop, not a substitute
+  for writing code that compiles.
+
+### What CI actually costs, and how not to waste it
+
+`.github/workflows/ci.yml` runs on a **macOS** runner, which bills at a **10x
+multiplier** against a private repo's monthly Actions allowance — roughly **200
+macOS minutes/month**. Treat every run as expensive:
+
+- **Batch your pushes.** `concurrency: cancel-in-progress: true` means a second
+  push to the same branch cancels the in-flight run and starts over, throwing
+  away everything it had already billed. Push once, then wait. Do **not** push a
+  "small extra fix" while a run is in flight.
+- **Measured shape of a healthy run:** build ≈ **60 seconds**, suite runs in
+  seconds. If a run takes 20+ minutes, it is *hung*, not slow — read the
+  timestamps in the log before tuning compiler flags. (An earlier round of
+  tuning chased a "20-minute build" that a timestamped log disproved.)
+- The job is capped at 20 minutes with tighter per-step timeouts, so a hang
+  fails fast and names the step it died in.
+- Tests run **serially** (`-parallel-testing-enabled NO`): the suite is short and
+  main-actor-bound, so parallel workers buy nothing and only interleave the
+  output. With one worker, the last test named in the log is the one that stuck.
+- Docs-only changes are skipped via `paths-ignore`. Because skipped runs report
+  no status, don't make this a *required* check while that's in place.
 
 ## The workflow — follow this for every change
 
@@ -89,7 +112,8 @@ merely inconvenient.
    request, and confirm the work matches what was asked. Note any gaps.
 
 Then run the balance check on every touched file, and open the PR (only when
-asked) with a note that the suite was not run here.
+asked) — CI runs the suite on it, so point at that check instead of claiming a
+test result.
 
 ## Hard invariants — do not break these
 
@@ -149,6 +173,23 @@ directory. Respect the `Shared/` framework rule when choosing where it goes.
 - **View rendering:** the `render(...)` harness and its `Scenario` helpers are
   `private` to `ViewRenderingTests.swift`. New view render tests must be added
   **inside that file** to reach them.
+- **Tests never touch real device services.** The render harness defaults to
+  `StubAuthenticator(canAuthenticate: true, result: true)` — never
+  `BiometricAuthenticator`. `AppLock.init` calls `canAuthenticate` and
+  `SettingsView`'s body reads `canUseLock`, so a real authenticator turns every
+  render into an `LAContext` round-trip to a system daemon on a headless CI
+  simulator. Same rule for any future hardware-backed service: put it behind a
+  protocol and stub it. Pass `appLock:` explicitly only to pin a *different*
+  state (locked, or a device that can't authenticate).
+- **Persisted preferences use a throwaway suite.** `throwawayDefaults()` in
+  `ViewRenderingTests.swift` (and `freshDefaults()` in `AppLockTests.swift`)
+  hands out a single-use `UserDefaults(suiteName:)`, so a test that flips a
+  stored flag can't leak it into the next test. Never write to `.standard`.
+- **Swift Testing ignores xcodebuild's test-timeout flags.**
+  `-test-timeouts-enabled` / `-default-test-execution-time-allowance` bound
+  *XCTest* cases only; they were tried in CI and a hung run sailed straight past
+  them. To bound a single test, use a `.timeLimit` trait; the workflow's
+  step-level `timeout-minutes` is what actually caps a hang.
 - Hold the `ModelContainer` for the test's lifetime — a deallocated container
   resets its context and invalidates every model it owned.
 
@@ -241,5 +282,5 @@ directory. Respect the `Shared/` framework rule when choosing where it goes.
 - [ ] `Shared/` still free of UIKit/Vision/ImageIO/MapKit.
 - [ ] Balance check clean on every touched file.
 - [ ] Tests written for the change, including a hostile/edge case.
-- [ ] PR body notes that the suite was **not run here** — flag a ⌘U before merge.
+- [ ] PR body points at the **CI check** for test results — never claims a pass.
 - [ ] No secrets, tokens, hostnames, or model identifier in the diff.

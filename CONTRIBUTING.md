@@ -31,8 +31,8 @@ apply (e.g. there are no tests to write for a docs-only change).
    Then compare the actual changes against the originating issue and the
    request, and confirm the work matches what was asked — flag any gaps.
 
-Open the PR (when asked) noting that the suite wasn't executed in CI, so a
-reviewer should run **⌘U** before merge.
+Open the PR (when asked). CI builds the app and runs the suite on every pull
+request — check that status rather than asserting the tests pass yourself.
 
 ## The rules that matter
 
@@ -97,6 +97,9 @@ decompression-bomb vector. Persist only re-encoded, size-bounded data.
 
 - Tests use **Swift Testing** (`@Test`, `#expect`, `#require`), not XCTest.
 - Run them with **⌘U** in Xcode (Product → Test) on the FuelTracker scheme.
+- **CI runs the suite on every pull request** (`.github/workflows/ci.yml`) — a
+  macOS runner builds the app and tests it on an iOS Simulator. That check is
+  the authority on whether the tests pass; a red check blocks merge.
 - **Don't just test the happy path.** The suite holds a deliberate hostile-input
   layer (`HostileInputTests`, `SecurityHardeningTests`, adversarial rendering):
   zero/negative/non-finite values, duplicate odometers, clock skew, OCR noise,
@@ -105,6 +108,22 @@ decompression-bomb vector. Persist only re-encoded, size-bounded data.
   coverage, not only the expected case.
 - View bodies are exercised in `ViewRenderingTests`, which hosts screens in a
   real window and forces layout.
+- **Tests stay off real device services.** Anything hardware-backed goes behind
+  a protocol and is stubbed. Concretely, the render harness injects
+  `StubAuthenticator`, never `BiometricAuthenticator` — `AppLock.init` and
+  `SettingsView`'s body both ask whether the device can authenticate, and with
+  the real implementation that's an `LAContext` call to a system daemon on every
+  render, on a CI simulator that has no biometric and no passcode. Tests that
+  persist a preference use a single-use `UserDefaults(suiteName:)` rather than
+  `.standard`, so state never leaks between tests.
+- **`xcodebuild`'s `-test-timeouts-enabled` and
+  `-default-test-execution-time-allowance` do nothing here** — they bound XCTest
+  cases, and this suite is Swift Testing. Bound an individual test with a
+  `.timeLimit` trait; CI's step timeouts bound the job.
+- **CI runs on a 10x-billed macOS runner.** A push to a branch with a run in
+  flight cancels it and restarts from zero, so batch changes into one push
+  instead of trickling commits onto an open PR. A healthy run is a ~60-second
+  build plus a few seconds of tests; a 20-minute run means something hung.
 
 See the "Running the tests" section of the [README](README.md) for the full
 layout of the suite.
@@ -116,9 +135,10 @@ layout of the suite.
   of commits, code, and docs.
 - After a PR merges, start follow-up work from a fresh branch off the latest
   `main` rather than stacking onto already-merged history.
-- CI cannot run the iOS test suite (see `CLAUDE.md` for why), so a human should
-  run **⌘U** before merging. Call this out in the PR when your change wasn't
-  executed on a device.
+- CI runs the suite on each PR, so let that check — not a hand-written claim —
+  confirm the tests pass. Authoring still happens without Xcode (see
+  `CLAUDE.md`), so review the code carefully before pushing; CI catches what
+  review can't (type errors, actual failures), not the reverse.
 
 ## Where to read more
 

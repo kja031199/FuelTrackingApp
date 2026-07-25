@@ -7,6 +7,14 @@ import UIKit
 
 // MARK: - Rendering harness
 
+/// A private, single-use `UserDefaults` suite, so a test that flips a persisted
+/// preference can't leak it into the next test (or into the developer's own
+/// simulator). Falls back to `.standard` only if the suite can't be created,
+/// which shouldn't happen for a random name.
+private func throwawayDefaults() -> UserDefaults {
+    UserDefaults(suiteName: "test.render.\(UUID().uuidString)") ?? .standard
+}
+
 /// Hosts a view in a real window and forces layout, so the view's body —
 /// including chart content and empty-state branches — actually executes.
 @MainActor
@@ -19,7 +27,17 @@ private func render(
 ) {
     // Construct the default lock inside the body: AppLock's init is
     // @MainActor-isolated, which a default argument expression can't call.
-    let lock = appLock ?? AppLock(authenticator: BiometricAuthenticator())
+    //
+    // The default authenticator is the *stub*, never `BiometricAuthenticator`.
+    // `AppLock.init` calls `canAuthenticate`, and `SettingsView`'s body reads
+    // `canUseLock` — with the real implementation each of those is an
+    // `LAContext` round-trip to a system daemon, which has no business running
+    // on a headless CI simulator. An unlocked, capable stub plus a throwaway
+    // defaults suite keeps rendering hermetic and off shared `UserDefaults`.
+    let lock = appLock ?? AppLock(
+        defaults: throwawayDefaults(),
+        authenticator: StubAuthenticator(canAuthenticate: true, result: true)
+    )
     let hosting = UIHostingController(
         rootView: AnyView(
             view.modelContainer(container)
@@ -373,6 +391,26 @@ struct UnitsRenderingTests {
         render(SettingsView(), container: Scenario.empty())
     }
 
+    @Test func settingsScreenRendersWhenTheDeviceCannotAuthenticate() {
+        // No biometric enrolled and no passcode set — the Security section has
+        // to lay out with the lock toggle disabled and its explanation shown.
+        // This is also the branch a real `LAContext` would have decided for us
+        // on a CI simulator; with the stub the outcome is pinned either way.
+        let lock = AppLock(defaults: throwawayDefaults(),
+                           authenticator: StubAuthenticator(canAuthenticate: false, result: false))
+        render(SettingsView(), container: Scenario.empty(), appLock: lock)
+    }
+
+    @Test func settingsScreenRendersWithTheLockAlreadyEnabled() {
+        // The "on" side of the Security section, which the default (off) lock
+        // never reaches.
+        let defaults = throwawayDefaults()
+        defaults.set(true, forKey: "privacy.appLockEnabled")
+        let lock = AppLock(defaults: defaults,
+                           authenticator: StubAuthenticator(canAuthenticate: true, result: true))
+        render(SettingsView(), container: Scenario.empty(), appLock: lock)
+    }
+
     @Test func dashboardRendersUnderMetricUnits() {
         // A full dashboard — KPIs plus every chart — exercised with converted
         // units, including the non-linear economy chart.
@@ -402,7 +440,7 @@ struct UnitsRenderingTests {
     @Test func lockScreenCoversTheAppWhenLocked() {
         // Enabled + a capable device that declines the auto-unlock prompt, so
         // the gate's lock overlay stays up and its body executes.
-        let defaults = UserDefaults(suiteName: "test.render.lock.\(UUID().uuidString)")!
+        let defaults = throwawayDefaults()
         defaults.set(true, forKey: "privacy.appLockEnabled")
         let lock = AppLock(defaults: defaults, authenticator: StubAuthenticator(canAuthenticate: true, result: false))
         render(ContentView().modifier(AppLockGate()), container: Scenario.empty(), appLock: lock)

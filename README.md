@@ -1,5 +1,7 @@
 # FuelTracker
 
+[![CI](https://github.com/kja031199/FuelTrackingApp/actions/workflows/ci.yml/badge.svg)](https://github.com/kja031199/FuelTrackingApp/actions/workflows/ci.yml)
+
 A native iPhone app for tracking gas fill-ups and fuel economy, inspired by Fuelly. Built with SwiftUI, SwiftData, and Swift Charts — no third-party dependencies.
 
 ## Features
@@ -137,6 +139,8 @@ FuelTrackerTests/                 # Unit tests (Swift Testing)
 ## Running the tests
 
 Press **⌘U** in Xcode (or Product → Test) with the FuelTracker scheme selected. Code coverage collection is enabled in the shared scheme — see the report under the Report navigator (⌘9) → latest Test → Coverage.
+
+The suite also runs automatically on every pull request and push to `main` via GitHub Actions (`.github/workflows/ci.yml`) — a macOS runner builds the app and tests it on an iOS Simulator, with the result bundle uploaded as an artifact when a run fails. No paid Apple Developer account is needed: Simulator builds require no code signing.
 
 The suite has three layers:
 
