@@ -80,6 +80,41 @@ macOS minutes/month**. Treat every run as expensive:
 - Docs-only changes are skipped via `paths-ignore`. Because skipped runs report
   no status, don't make this a *required* check while that's in place.
 
+### The cheap Linux checks — `.github/workflows/checks.yml`
+
+Three jobs on `ubuntu-latest` at **1x** billing, parallel and independent:
+**gitleaks** (secret scan), **SwiftLint** (lint), **lychee** (Markdown links).
+Deliberately no `paths-ignore` — they're cheap, and a docs change is exactly when
+the link check matters. They always report a status, so unlike `ci.yml` these are
+the ones that can be *required* checks.
+
+You **can** run all three in this environment, unlike the iOS suite. Their
+Linux binaries download and execute here:
+
+```bash
+gitleaks git . --config .gitleaks.toml --redact --no-banner --verbose
+lychee --offline --no-progress --include-fragments '**/*.md'
+```
+
+**SwiftLint is the exception — it cannot run here.** The standalone
+`swiftlint_linux.zip` binary starts but dies with `Loading
+libsourcekitdInProc.so failed`: every rule needs SourceKit, which ships with a
+Swift toolchain, and `download.swift.org` plus container blob registries are both
+blocked by the proxy (the tags/manifest API is reachable; blobs 403). So
+`.swiftlint.yml` is the one config whose first CI run is its real proof.
+
+That's why it uses **`only_rules`** — an explicit allowlist rather than the
+default set minus exclusions. Every rule in it was verified to read zero by
+grepping all 80 Swift files, which is what makes `--strict` safe, and it means a
+SwiftLint version bump can't introduce a new rule and redden the branch. The file
+also records what was left out **with measured counts** (`force_unwrapping`: 59
+hits, 56 in tests; `line_length`: 58 lines over 120, mostly UI copy;
+`file_length`: the longest files are test files that should grow). Read those
+notes before re-measuring.
+
+When adding a rule you can't execute, verify it by grep first and say in the PR
+that CI is the proof — the same discipline as the Swift code.
+
 ## The workflow — follow this for every change
 
 Every piece of work runs through four role phases, in order. Wear each hat

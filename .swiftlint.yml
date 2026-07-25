@@ -1,0 +1,86 @@
+# SwiftLint configuration for FuelTracker (issue #72).
+#
+# STRATEGY: an explicit allowlist, not the default set minus exclusions.
+#
+# `only_rules` means *nothing* runs except what is listed below. That is
+# deliberate, for two reasons:
+#
+#   1. The issue's bar was "tuned so the current codebase passes." Every rule
+#      here was checked against all 80 Swift files and reads **zero** today, so
+#      the check lands green and any future violation is genuinely new.
+#   2. A SwiftLint upgrade can't surprise us. New releases add rules to the
+#      default set; with an allowlist a version bump changes nothing until
+#      someone opts in here. (`--strict` is on, so a warning fails the build —
+#      that only works if the rule set is predictable.)
+#
+# Adding a rule is expected and cheap: add it, watch the check, fix or drop it.
+
+only_rules:
+  # --- Correctness and safety -------------------------------------------------
+  # These are the reason the linter is here. The project's stated bar is "never
+  # crash, never divide by zero, never fabricate a statistic"; these catch the
+  # constructs that break the first clause.
+  - force_cast                        # `as!` — crashes on a bad cast
+  - force_try                         # `try!` — crashes on a thrown error
+  - implicitly_unwrapped_optional     # `T!` properties — deferred crash
+  - discouraged_direct_init           # e.g. `UIDevice()`, `Bundle()`
+  - block_based_kvo                   # the old selector-based KVO is crash-prone
+  - notification_center_detachment    # removeObserver in the wrong place
+  - weak_delegate                     # retain cycles via a strong delegate
+  - unowned_variable_capture          # `[unowned self]` — prefer `[weak self]`
+
+  # --- Clarity / dead weight -------------------------------------------------
+  - empty_count                       # `.isEmpty`, not `.count == 0`
+  - empty_string                      # `.isEmpty`, not `== ""`
+  - duplicate_imports
+  - redundant_optional_initialization  # `var x: T? = nil`
+  - unneeded_break_in_switch
+  - private_over_fileprivate
+  - legacy_constant                   # `.zero`, not `CGRectZero`
+
+  # --- Hygiene ---------------------------------------------------------------
+  # `todo` is enabled on purpose: this project tracks work in GitHub issues, so a
+  # TODO buried in source is a note nobody will ever find. File an issue instead.
+  - todo
+  - trailing_whitespace
+  - trailing_newline
+
+# Only the app and test sources. `scripts/` is Python; the DocC catalog is
+# Markdown; neither holds Swift.
+included:
+  - Shared
+  - FuelTracker
+  - FuelTrackerWatch
+  - FuelTrackerTests
+
+trailing_whitespace:
+  ignores_empty_lines: false
+  ignores_comments: false
+
+# ---------------------------------------------------------------------------
+# DELIBERATELY NOT ENABLED (measured, not guessed)
+#
+# Each of these was counted across the codebase. They're recorded here so the
+# next person doesn't have to re-measure to decide.
+#
+# force_unwrapping — 59 hits: 56 in `FuelTrackerTests/`, 3 in
+#   `Shared/Support/PreviewData.swift`. Production code outside preview fixtures
+#   has **none**, which is the part that matters. Enabling it would mean either
+#   rewriting 56 test lines where a force unwrap is a deliberate "this fixture
+#   must exist" assertion, or excluding the test target and weakening the rule.
+#   Revisit if it can be scoped to non-test paths.
+#
+# line_length — 58 lines exceed 120 chars, 18 exceed 150, longest is 355. Nearly
+#   all are user-facing UI copy inside `Text(...)` or KPI builder calls. Wrapping
+#   a sentence across four lines to satisfy a linter makes it harder to read, not
+#   easier. A ratchet at 360 would be theatre.
+#
+# file_length / type_body_length — longest file is 702 lines
+#   (`ViewRenderingTests.swift`), and the three next-longest are also test files.
+#   A ratchet here would fight the project's own rule that every change adds
+#   hostile-input tests. Test files are supposed to grow.
+#
+# Formatting rules (colon, comma, opening_brace, mark, vertical_whitespace, …) —
+#   left out for now per the issue's "start permissive." The codebase is already
+#   internally consistent; these would add churn without catching a defect. They
+#   are the natural next batch if style drift ever becomes a real problem.

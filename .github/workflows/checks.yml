@@ -1,0 +1,140 @@
+name: Checks
+
+# Cheap, fast, Linux-only checks that run alongside the macOS build-and-test job
+# in `ci.yml`. Issues #71 (secret scan), #72 (SwiftLint), #73 (Markdown links).
+#
+# WHY THIS IS A SEPARATE WORKFLOW FROM ci.yml
+#
+# `ci.yml` runs on a macOS runner, which bills at a **10x multiplier**. These
+# jobs run on `ubuntu-latest` at **1x**, so all three together cost less than a
+# tenth of what one macOS minute costs. Keeping them separate means:
+#
+#   - They can run on *every* push without quota anxiety. Deliberately no
+#     `paths-ignore` here — unlike `ci.yml`, which skips docs-only changes.
+#     A docs change is exactly when the link checker matters most.
+#   - Because they never skip, they always report a status, so these **can** be
+#     made required status checks. (`ci.yml` can't, while its `paths-ignore`
+#     means a docs-only PR would wait forever for a check that never runs.)
+#   - A red lint check doesn't hide a red test check, or vice versa.
+#
+# The three jobs are independent and run in parallel; one failing doesn't mask
+# the others.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+# Read-only. Nothing here needs to write to the repo, and a leaked token on a
+# secret-scanning job would be a poor joke.
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Pinned rather than `latest`: a scanner that silently changes its rule set
+      # can turn a green branch red with no code change. Bump deliberately.
+      GITLEAKS_VERSION: 8.24.3
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@v5
+        with:
+          # `fetch-depth: 0` is required: the scan covers every commit, not just
+          # the diff. A secret that was committed and then "removed" in a later
+          # commit is still in the history and still leaked.
+          fetch-depth: 0
+
+      - name: Install gitleaks
+        run: |
+          set -euo pipefail
+          curl -sSfL \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          chmod +x gitleaks
+          ./gitleaks version
+
+      - name: Scan every commit
+        run: |
+          set -euo pipefail
+          # --redact keeps a real finding out of the public log; the point is to
+          # learn *that* something leaked and where, not to reprint it.
+          ./gitleaks git . \
+            --config .gitleaks.toml \
+            --redact \
+            --no-banner \
+            --verbose
+
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint (SwiftLint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # SwiftLint needs a Swift toolchain (its rules load `libsourcekitdInProc.so`,
+    # which the standalone Linux binary does not ship). The official image
+    # bundles both, and running it as a container job means Dependabot's
+    # github-actions ecosystem can bump this pin along with the actions.
+    container:
+      image: ghcr.io/realm/swiftlint:0.65.0
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+
+      - name: Show version
+        run: swiftlint --version
+
+      - name: Lint
+        run: |
+          set -euo pipefail
+          # --strict promotes warnings to errors. That's only safe because
+          # `.swiftlint.yml` uses an explicit `only_rules` allowlist that was
+          # verified to read zero on this codebase — see the comments in it.
+          #
+          # The github-actions reporter emits ::warning/::error annotations, so
+          # violations show up inline on the PR diff instead of only in the log.
+          swiftlint lint --strict --reporter github-actions-logging
+
+  # ---------------------------------------------------------------------------
+  links:
+    name: Docs links (lychee)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      LYCHEE_VERSION: v0.15.1
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+
+      - name: Install lychee
+        run: |
+          set -euo pipefail
+          curl -sSfL \
+            "https://github.com/lycheeverse/lychee/releases/download/${LYCHEE_VERSION}/lychee-${LYCHEE_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
+            | tar -xz lychee
+          chmod +x lychee
+          ./lychee --version
+
+      - name: Check relative links and anchors
+        run: |
+          set -euo pipefail
+          # --offline checks only on-disk targets: relative file links and
+          # heading anchors. External URLs are skipped entirely, on purpose:
+          #
+          #   - This repo is **private**, and README/ROADMAP link to its own
+          #     issues. An unauthenticated checker 404s on every one of them.
+          #   - A third-party site being down is not a reason to block a merge.
+          #
+          # Relative links are the ones that rot silently when a file moves, and
+          # they're the ones a check can be trusted to judge.
+          #
+          # --include-fragments also validates `#heading-anchor` targets, so a
+          # renamed heading is caught, not just a renamed file.
+          ./lychee --offline --no-progress --include-fragments '**/*.md'

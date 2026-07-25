@@ -128,6 +128,66 @@ decompression-bomb vector. Persist only re-encoded, size-bounded data.
 See the "Running the tests" section of the [README](README.md) for the full
 layout of the suite.
 
+## Automated checks
+
+Two workflows run on every pull request, split by what they cost.
+
+**`ci.yml` — build & test.** A macOS runner builds the app and runs the suite on
+an iOS Simulator (see Testing above). This is the expensive one: **10× billing**,
+~7 minutes a run. It skips docs-only changes.
+
+**`checks.yml` — three cheap Linux checks**, all at **1× billing**, running in
+parallel and independent of each other. Unlike `ci.yml` these never skip, so they
+always report a status — which means they're the ones safe to make *required*
+status checks.
+
+| Check | Tool | What fails it |
+|---|---|---|
+| Secret scan | gitleaks | A credential-shaped string anywhere in **any commit** |
+| Lint | SwiftLint | Any violation of the rules in `.swiftlint.yml` (`--strict`) |
+| Docs links | lychee | A broken relative link or `#heading-anchor` in Markdown |
+
+### Running them locally
+
+```bash
+# Lint. On macOS: brew install swiftlint
+swiftlint lint --strict
+
+# Or without installing anything, matching CI exactly:
+docker run --rm -v "$PWD:/work" -w /work ghcr.io/realm/swiftlint:0.65.0 \
+  swiftlint lint --strict
+
+# Secret scan (brew install gitleaks)
+gitleaks git . --config .gitleaks.toml --redact --verbose
+
+# Docs links (brew install lychee)
+lychee --offline --include-fragments '**/*.md'
+```
+
+### What to know before changing them
+
+- **`.swiftlint.yml` is an allowlist, not the default set.** `only_rules` means
+  nothing runs but what's listed. Every rule in it was verified to read zero
+  across all 80 Swift files, which is what makes `--strict` safe. It also means a
+  SwiftLint upgrade can't turn the branch red on its own — new rules stay off
+  until someone opts in. Adding a rule is cheap and expected.
+- The file records what was **deliberately left out, with measured counts** —
+  `force_unwrapping` (59 hits, 56 of them in tests), `line_length` (58 lines over
+  120, nearly all UI copy), `file_length` (the four longest files are test files
+  that are *supposed* to grow). Read that before re-litigating one of them.
+- **The link check is `--offline` on purpose.** It validates relative links and
+  anchors only. External URLs are skipped because this repo is private and its
+  own docs link to its own issues — an unauthenticated checker 404s on every one
+  — and because a third-party site being down shouldn't block a merge.
+- **The secret scan reads full history** (`fetch-depth: 0`), not the diff. A
+  secret committed and then deleted in a later commit is still leaked. If one
+  ever lands, allowlisting is not the fix: rotate the credential first, then
+  purge the history, then re-scan.
+- `.github/dependabot.yml` bumps the pinned actions monthly, grouping minor and
+  patch into one PR and leaving majors separate. The gitleaks and lychee versions
+  are plain release downloads Dependabot can't see; they sit in an `env:` block
+  at the top of their job so bumping is a one-line edit.
+
 ## Branch & PR workflow
 
 - Work on a feature branch; open **one PR per branch**.

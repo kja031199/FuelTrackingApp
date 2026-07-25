@@ -1,0 +1,53 @@
+# Dependabot configuration (issue #74).
+#
+# Keeps the CI supply chain from quietly aging. This costs **no Actions
+# minutes** to run — Dependabot works on GitHub's own infrastructure — only the
+# resulting PRs trigger CI. That's the point: a bump PR gets validated by the
+# real build before anyone merges it.
+#
+# Issue #75 (actions pinned to the deprecated Node 20 runtime) is exactly the
+# class of maintenance this automates. That one was noticed by reading a warning
+# in a CI log; the next one shouldn't have to be.
+
+version: 2
+
+updates:
+  # The only ecosystem that applies today. The app has **no Swift package
+  # dependencies** — no SPM manifest, no Carthage, no CocoaPods — so there is
+  # nothing else to watch. Add a `swift` entry only if SPM deps are introduced
+  # (e.g. if `Shared/` is ever extracted into a local package for #76).
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      # Monthly, not weekly. This is hygiene on a handful of pinned actions in
+      # two workflow files, not a fast-moving dependency tree. A weekly cadence
+      # would mostly produce noise to close.
+      interval: monthly
+    # Minor and patch bumps arrive as one PR so a routine refresh is a single
+    # review. Majors are left ungrouped on purpose — `upload-artifact` v4 -> v5
+    # changed artifact behavior, and that deserves to be read, not rubber-stamped
+    # alongside four other bumps.
+    groups:
+      actions-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+    open-pull-requests-limit: 3
+    labels:
+      - "priority: low"
+    commit-message:
+      prefix: "CI"
+
+# NOT COVERED HERE — the two pinned tool binaries in `checks.yml`
+#
+# `GITLEAKS_VERSION` and `LYCHEE_VERSION` are plain release downloads, not
+# `uses:` references, so Dependabot can't see them. That's a conscious trade:
+# pinning the binary makes the check reproducible and keeps it off the Node
+# action runtime entirely, at the cost of a manual bump. Both live in an `env:`
+# block at the top of their job so bumping is a one-line edit.
+#
+# The SwiftLint container image *is* a `container:` pin, which Dependabot's
+# github-actions ecosystem is generally able to update. If it turns out not to
+# pick that up, treat it like the other two: a one-line manual bump.
