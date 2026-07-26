@@ -115,6 +115,19 @@ notes before re-measuring.
 When adding a rule you can't execute, verify it by grep first and say in the PR
 that CI is the proof — the same discipline as the Swift code.
 
+**Check the grep before trusting a zero.** A rule was added to the allowlist on
+the strength of a grep that returned zero and CI then found four violations. The
+cause: `[A-Za-z0-9_<>,\[\] ]` looks like a character class containing brackets,
+but POSIX brackets don't take backslash escapes — the class ends at the first
+`]`, and the rest becomes literal. A silently-wrong pattern reads exactly like a
+clean codebase. **A zero result is a claim; prove it by inverting the pattern**
+and confirming it matches something you know exists:
+
+```bash
+# Trust a "0 hits" only after the same regex finds the case you planted.
+grep -rnE '(var|let)[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]*:[^=]*\?[[:space:]]*=[[:space:]]*nil' .
+```
+
 **Container jobs get `sh`, not bash.** The SwiftLint job runs inside
 `ghcr.io/realm/swiftlint`, which ships no bash, so Actions falls back to
 `sh -e {0}` — dash. `set -euo pipefail` dies there with `Illegal option -o

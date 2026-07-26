@@ -33,7 +33,6 @@ only_rules:
   - empty_count                       # `.isEmpty`, not `.count == 0`
   - empty_string                      # `.isEmpty`, not `== ""`
   - duplicate_imports
-  - redundant_optional_initialization  # `var x: T? = nil`
   - unneeded_break_in_switch
   - private_over_fileprivate
   - legacy_constant                   # `.zero`, not `CGRectZero`
@@ -62,6 +61,25 @@ trailing_whitespace:
 #
 # Each of these was counted across the codebase. They're recorded here so the
 # next person doesn't have to re-measure to decide.
+#
+# redundant_optional_initialization (SwiftLint 0.65 reports it under its newer
+#   name, `implicit_optional_initialization`) — 4 hits, all SwiftUI view
+#   properties: `MetricLineChart.average` / `.yAxisLabel`,
+#   `MonthlyBarChart.yAxisLabel`, `KPICard.accessibilitySummary`.
+#
+#   This one is here as a correction. It was originally in the allowlist above
+#   on the strength of a grep that returned zero — but that grep had a broken
+#   character class (`[...\[\] ]` ends the class at the escaped bracket), so it
+#   matched nothing and the "verified zero" claim was false. CI caught it.
+#
+#   It stays out on the merits, not just to make the check green. Every hit is a
+#   `var` optional in a struct, where `= nil` sits next to real defaults like
+#   `var compact = false` and documents the memberwise initializer's default at
+#   the declaration. Swift very likely synthesizes that default anyway, which is
+#   what makes the rule's claim of redundancy correct in general — but this
+#   environment cannot compile Swift, the call sites do omit these arguments,
+#   and the rule buys no correctness. Not worth an unverifiable edit to four
+#   shipping files.
 #
 # force_unwrapping — 59 hits: 56 in `FuelTrackerTests/`, 3 in
 #   `Shared/Support/PreviewData.swift`. Production code outside preview fixtures
