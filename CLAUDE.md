@@ -80,6 +80,63 @@ macOS minutes/month**. Treat every run as expensive:
 - Docs-only changes are skipped via `paths-ignore`. Because skipped runs report
   no status, don't make this a *required* check while that's in place.
 
+### The cheap Linux checks — `.github/workflows/checks.yml`
+
+Three jobs on `ubuntu-latest` at **1x** billing, parallel and independent:
+**gitleaks** (secret scan), **SwiftLint** (lint), **lychee** (Markdown links).
+Deliberately no `paths-ignore` — they're cheap, and a docs change is exactly when
+the link check matters. They always report a status, so unlike `ci.yml` these are
+the ones that can be *required* checks.
+
+You **can** run all three in this environment, unlike the iOS suite. Their
+Linux binaries download and execute here:
+
+```bash
+gitleaks git . --config .gitleaks.toml --redact --no-banner --verbose
+lychee --offline --no-progress --include-fragments '**/*.md'
+```
+
+**SwiftLint is the exception — it cannot run here.** The standalone
+`swiftlint_linux.zip` binary starts but dies with `Loading
+libsourcekitdInProc.so failed`: every rule needs SourceKit, which ships with a
+Swift toolchain, and `download.swift.org` plus container blob registries are both
+blocked by the proxy (the tags/manifest API is reachable; blobs 403). So
+`.swiftlint.yml` is the one config whose first CI run is its real proof.
+
+That's why it uses **`only_rules`** — an explicit allowlist rather than the
+default set minus exclusions. Every rule in it was verified to read zero by
+grepping all 80 Swift files, which is what makes `--strict` safe, and it means a
+SwiftLint version bump can't introduce a new rule and redden the branch. The file
+also records what was left out **with measured counts** (`force_unwrapping`: 59
+hits, 56 in tests; `line_length`: 58 lines over 120, mostly UI copy;
+`file_length`: the longest files are test files that should grow). Read those
+notes before re-measuring.
+
+When adding a rule you can't execute, verify it by grep first and say in the PR
+that CI is the proof — the same discipline as the Swift code.
+
+**Check the grep before trusting a zero.** A rule was added to the allowlist on
+the strength of a grep that returned zero and CI then found four violations. The
+cause: `[A-Za-z0-9_<>,\[\] ]` looks like a character class containing brackets,
+but POSIX brackets don't take backslash escapes — the class ends at the first
+`]`, and the rest becomes literal. A silently-wrong pattern reads exactly like a
+clean codebase. **A zero result is a claim; prove it by inverting the pattern**
+and confirming it matches something you know exists:
+
+```bash
+# Trust a "0 hits" only after the same regex finds the case you planted.
+grep -rnE '(var|let)[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]*:[^=]*\?[[:space:]]*=[[:space:]]*nil' .
+```
+
+**Container jobs get `sh`, not bash.** The SwiftLint job runs inside
+`ghcr.io/realm/swiftlint`, which ships no bash, so Actions falls back to
+`sh -e {0}` — dash. `set -euo pipefail` dies there with `Illegal option -o
+pipefail` *before running the step's real command*, which reads like a lint
+failure but isn't one. Don't add `set -euo pipefail` to a step running in a
+container unless you know that image has bash; `-e` is already applied by the
+default shell. The `secrets` and `links` jobs run directly on the runner, where
+bash exists, so they keep it.
+
 ## The workflow — follow this for every change
 
 Every piece of work runs through four role phases, in order. Wear each hat

@@ -1,0 +1,47 @@
+# gitleaks configuration for FuelTracker.
+#
+# CONTRIBUTING.md and CLAUDE.md both say secrets, tokens, and internal hostnames
+# must never appear in commits, code, or docs. This file is what turns that
+# written rule into a check CI can fail on (issue #71).
+#
+# The app has no server, no API keys, and no third-party SDKs, so there is
+# genuinely nothing here that *should* look like a credential. That makes the
+# default rule set a good fit: it is broad, and a hit is far more likely to be a
+# real mistake than an accepted exception.
+
+title = "FuelTracker"
+
+# Inherit gitleaks' full built-in rule set rather than hand-rolling rules, so
+# newly published detections arrive with a version bump instead of needing to be
+# written here. Everything below narrows that set; nothing replaces it.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known-safe patterns that are not credentials"
+
+# Placeholder identifiers that ship in the repo on purpose. `com.example.*` is
+# the deliberately non-real bundle prefix (the project builds on a free personal
+# Apple ID and the identifier is meant to be replaced), and the entitlements
+# files are committed empty for the same reason.
+regexes = [
+  '''com\.example\.FuelTracker''',
+]
+
+paths = [
+  # Binary assets can't contain a reviewable secret but do produce high-entropy
+  # false positives.
+  '''.*\.(png|jpg|jpeg|pdf|xcassets/.*)$''',
+  # Xcode project state: UUID-heavy generated content, no secrets.
+  '''.*\.xcodeproj/project\.xcworkspace/.*''',
+  '''.*\.xcodeproj/xcuserdata/.*''',
+]
+
+# NOTE ON ADDING EXCEPTIONS
+# Prefer fixing the finding over allowlisting it. If an entry genuinely belongs
+# here, add it with a comment saying what the value is and why it is safe — an
+# unexplained allowlist entry is indistinguishable from a suppressed leak.
+#
+# If a real credential ever does land: allowlisting it is NOT the fix. Rotate
+# the credential first — it is in the git history and must be treated as
+# compromised — then purge and force-push, then re-run the scan.
