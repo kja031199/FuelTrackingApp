@@ -46,7 +46,7 @@ jobs:
       GITLEAKS_VERSION: 8.24.3
     steps:
       - name: Check out full history
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           # `fetch-depth: 0` is required: the scan covers every commit, not just
           # the diff. A secret that was committed and then "removed" in a later
@@ -86,7 +86,7 @@ jobs:
       image: ghcr.io/realm/swiftlint:0.65.0
     steps:
       - name: Check out
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Show version
         run: swiftlint --version
@@ -117,7 +117,7 @@ jobs:
       LYCHEE_VERSION: v0.15.1
     steps:
       - name: Check out
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Install lychee
         run: |
