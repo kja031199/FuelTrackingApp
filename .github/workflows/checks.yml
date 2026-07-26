@@ -91,9 +91,15 @@ jobs:
       - name: Show version
         run: swiftlint --version
 
+      # NOTE: no `set -euo pipefail` in this job's steps, unlike the two above.
+      # This image ships no bash, so Actions falls back to `sh -e {0}` — which is
+      # dash, and dash has no `pipefail` (it fails with "Illegal option -o
+      # pipefail" before running anything). The `-e` is already applied by the
+      # default shell, and there's no pipeline here to need `pipefail` for. The
+      # other two jobs run directly on the runner, where bash exists, so they
+      # keep it.
       - name: Lint
         run: |
-          set -euo pipefail
           # --strict promotes warnings to errors. That's only safe because
           # `.swiftlint.yml` uses an explicit `only_rules` allowlist that was
           # verified to read zero on this codebase — see the comments in it.

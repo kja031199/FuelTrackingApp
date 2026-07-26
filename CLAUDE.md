@@ -115,6 +115,15 @@ notes before re-measuring.
 When adding a rule you can't execute, verify it by grep first and say in the PR
 that CI is the proof — the same discipline as the Swift code.
 
+**Container jobs get `sh`, not bash.** The SwiftLint job runs inside
+`ghcr.io/realm/swiftlint`, which ships no bash, so Actions falls back to
+`sh -e {0}` — dash. `set -euo pipefail` dies there with `Illegal option -o
+pipefail` *before running the step's real command*, which reads like a lint
+failure but isn't one. Don't add `set -euo pipefail` to a step running in a
+container unless you know that image has bash; `-e` is already applied by the
+default shell. The `secrets` and `links` jobs run directly on the runner, where
+bash exists, so they keep it.
+
 ## The workflow — follow this for every change
 
 Every piece of work runs through four role phases, in order. Wear each hat
