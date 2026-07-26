@@ -10,6 +10,8 @@ struct WeekdayPriceChart: View {
     let cheapestWeekday: Int?
     var units: UnitPreferences = .us
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         Chart(prices) { day in
             PointMark(
@@ -39,6 +41,8 @@ struct WeekdayPriceChart: View {
     }
 
     private func color(for day: WeekdayPrice) -> Color {
-        day.weekday == cheapestWeekday ? .green : Metric.price.color
+        day.weekday == cheapestWeekday
+            ? AccessiblePalette.color(.green, in: colorScheme)
+            : Metric.price.color(in: colorScheme)
     }
 }

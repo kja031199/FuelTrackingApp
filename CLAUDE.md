@@ -28,11 +28,15 @@ user's private iCloud.
   the units system (`MeasurementUnits`, `UnitSettings`), privacy/security
   (`PrivacySettings`, `LocationPrivacy`, `StoreProtection`, `AppLock`), the
   list search/filter (`FillUpFilter`, `DashboardTimeRange`), the first-run
-  gate (`OnboardingGate`), and the stats memo (`FuelStatisticsMemo`).
+  gate (`OnboardingGate`), the stats memo (`FuelStatisticsMemo`), and the
+  contrast-safe colours (`AccessiblePalette`, `Metric`).
 - `FuelTracker/` — the iPhone app (thin views) + iOS-only `Scanning/` importers
   and `Services/` (Vision, ImageIO, CoreLocation/MapKit, PhotosUI).
 - `FuelTrackerWatch/` — the watch app (thin views).
 - `FuelTrackerTests/` — Swift Testing unit + rendering tests.
+- `Shared/Views/` — the shared chart components (`MetricCharts`) and their
+  accessibility layers (`ChartAccessibility` spoken summaries,
+  `ChartAudioGraph` audio graphs).
 - `FuelTracker/FuelTracker.docc/` — DocC catalog (domain essays + curated
   symbol docs); build with ⌃⌘D. Keep the essays in sync when the MPG or
   scanning logic changes.
@@ -287,6 +291,23 @@ directory. Respect the `Shared/` framework rule when choosing where it goes.
     tuned to US pumps. Manual entry supports every unit.
   - The watch keeps its own preference in its local `UserDefaults` (syncing it
     with the phone needs a shared App Group, deferred with iCloud).
+- **Accent colors go through `AccessiblePalette`, never `.orange`/`.blue`/etc.**
+  Apple's stock palette fails WCAG 2.2 AA in light mode across the board (orange
+  2.20:1 on a white card, where text needs 4.5:1; orange/teal/green also fail the
+  3:1 bar for chart marks). `AccessiblePalette.color(_:in:)` and
+  `Metric.color(in:)` take a `ColorScheme`; views hold
+  `@Environment(\.colorScheme)` and pass it down. Colors are stored as **RGB
+  components, not `Color`**, precisely so `ContrastTests` can recompute every
+  ratio each CI run — a `Color` is opaque and can't be measured. Details and the
+  device-only checklist live in `docs/accessibility.md`.
+- **Chart audio graphs are iOS-only.** `AXChartDescriptor` doesn't exist on
+  watchOS, so `MetricChartDescriptor` sits behind `#if os(iOS)` in
+  `Shared/Views/ChartAudioGraph.swift`. The *data* half (`ChartAudioGraphData`)
+  is deliberately plain and platform-free so it's testable without a simulator:
+  it drops non-finite samples rather than clamping them, returns `nil` rather
+  than an empty graph when nothing is usable, and pads a flat series so the axis
+  isn't zero-width (with a fixed pad at exactly zero, where a proportional one
+  stays zero).
 - `Winner.notContested` (not `.none`) is the showdown "tie" case — the rename
   avoided an optional-chaining footgun (`row("x")?.winner == .none`).
 - Location capture is user-controllable (`PrivacySettings.locationCaptureEnabled`,

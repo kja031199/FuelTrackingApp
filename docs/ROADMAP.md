@@ -34,7 +34,7 @@ heads toward the App Store.
 
 ---
 
-## Phase 1 — Infrastructure & quality *(now)*
+## Phase 1 — Infrastructure & quality *(essentially complete)*
 
 Make the foundation trustworthy before adding more surface.
 
@@ -44,10 +44,11 @@ Make the foundation trustworthy before adding more surface.
   before merge" gap that has shadowed every change. **No paid account needed**
   (Simulator builds don't require signing). Highest-leverage item on the board.
 - **Finish deferred accessibility** —
-  [#63](https://github.com/kja031199/FuelTrackingApp/issues/63). Chart audio
-  graphs (`AXChartDescriptor`), a contrast audit, a per-screen Accessibility
-  Inspector pass, and the App Store Accessibility Nutrition Label — the pieces
-  #33 deferred because they need a device / the Inspector.
+  [#63](https://github.com/kja031199/FuelTrackingApp/issues/63) *(done, bar the
+  device pass)*. Chart audio graphs and a WCAG 2.2 AA contrast fix shipped, along
+  with a drafted Accessibility Nutrition Label. The per-screen Accessibility
+  Inspector audit and the Voice Control check genuinely need hardware; they're a
+  checklist in [`accessibility.md`](accessibility.md).
 
 ## Phase 2 — Deepen the core *(free-account-safe)*
 

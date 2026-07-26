@@ -55,8 +55,25 @@ struct MetricLineChart: View {
     var yAxisLabel: ((Double) -> String)? = nil
     /// Above this many points, the plotted series is downsampled for display.
     var downsampleThreshold = 500
+    /// Title VoiceOver announces for the audio graph. Falls back to the
+    /// metric's generic name, which is enough on the watch (no audio graphs
+    /// there) but vague on a dashboard with two distance charts.
+    var accessibilityTitle: String? = nil
 
     @State private var selectedDate: Date?
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// The audio graph is built from the **displayed** points so the tones line
+    /// up with the marks a sighted user sees. Statistics still come from the
+    /// full history.
+    private var audioGraph: ChartAudioGraphData? {
+        ChartAudioGraphData.series(
+            title: accessibilityTitle ?? metric.accessibilityName,
+            yAxisLabel: accessibilityTitle ?? metric.accessibilityName,
+            points: displayPoints,
+            describeValue: valueLabel
+        )
+    }
 
     /// The points actually drawn — downsampled for very long histories. The
     /// average rule still comes from statistics over the full dataset.
@@ -78,7 +95,7 @@ struct MetricLineChart: View {
                     x: .value("Date", point.date),
                     y: .value("Value", point.value)
                 )
-                .foregroundStyle(metric.color)
+                .foregroundStyle(metric.color(in: colorScheme))
                 .lineStyle(StrokeStyle(lineWidth: 2))
                 .interpolationMethod(.monotone)
                 .accessibilityLabel(point.date.formatted(.dateTime.month(.abbreviated).day()))
@@ -89,7 +106,7 @@ struct MetricLineChart: View {
                         x: .value("Date", point.date),
                         y: .value("Value", point.value)
                     )
-                    .foregroundStyle(metric.color)
+                    .foregroundStyle(metric.color(in: colorScheme))
                     .symbolSize(selectedPoint?.id == point.id ? 100 : 36)
                     .accessibilityHidden(true)
                 }
@@ -123,6 +140,7 @@ struct MetricLineChart: View {
         .modifier(MetricYAxis(label: yAxisLabel))
         .modifier(ChartSelection(enabled: !compact, selectedDate: $selectedDate))
         .modifier(CompactXAxis(hidden: compact))
+        .modifier(ChartAudioGraph(data: audioGraph, describeY: valueLabel))
     }
 }
 
@@ -133,6 +151,24 @@ struct MonthlyBarChart: View {
     let metric: Metric
     var compact = false
     var yAxisLabel: ((Double) -> String)? = nil
+    /// Title VoiceOver announces for the audio graph.
+    var accessibilityTitle: String? = nil
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var describeValue: (Double) -> String {
+        yAxisLabel ?? { $0.formatted() }
+    }
+
+    private var audioGraph: ChartAudioGraphData? {
+        ChartAudioGraphData.monthly(
+            title: accessibilityTitle ?? metric.accessibilityName,
+            yAxisLabel: accessibilityTitle ?? metric.accessibilityName,
+            totals: totals,
+            value: value,
+            describeValue: describeValue
+        )
+    }
 
     var body: some View {
         Chart(totals) { total in
@@ -140,14 +176,14 @@ struct MonthlyBarChart: View {
                 x: .value("Month", total.month, unit: .month),
                 y: .value("Value", total[keyPath: value])
             )
-            .foregroundStyle(metric.color)
+            .foregroundStyle(metric.color(in: colorScheme))
             .clipShape(UnevenRoundedRectangle(
                 topLeadingRadius: compact ? 2 : 4,
                 topTrailingRadius: compact ? 2 : 4,
                 style: .continuous
             ))
             .accessibilityLabel(total.month.formatted(.dateTime.month(.wide).year()))
-            .accessibilityValue((yAxisLabel ?? { $0.formatted() })(total[keyPath: value]))
+            .accessibilityValue(describeValue(total[keyPath: value]))
         }
         .chartXAxis {
             AxisMarks(values: .stride(by: .month)) { _ in
@@ -155,6 +191,7 @@ struct MonthlyBarChart: View {
             }
         }
         .modifier(MetricYAxis(label: yAxisLabel))
+        .modifier(ChartAudioGraph(data: audioGraph, describeY: describeValue))
     }
 }
 
