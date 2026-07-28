@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import SwiftUI
 import Testing
 @testable import FuelTracker
 
@@ -298,8 +299,13 @@ struct KPITests {
 
 struct MetricTests {
     @Test func everyMetricHasADistinctColor() {
-        let colors = [Metric.economy, .price, .spending, .distance].map(\.color)
-        #expect(Set(colors.map(String.init(describing:))).count == colors.count)
+        // `Metric.color` is scheme-dependent now, so check both appearances:
+        // two metrics that collided in only one of them would still be
+        // indistinguishable to anyone using that appearance.
+        for scheme in [ColorScheme.light, .dark] {
+            let colors = [Metric.economy, .price, .spending, .distance].map { $0.color(in: scheme) }
+            #expect(Set(colors.map(String.init(describing:))).count == colors.count)
+        }
     }
 }
 

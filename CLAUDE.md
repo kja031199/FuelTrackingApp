@@ -147,6 +147,21 @@ and confirming it matches something you know exists:
 grep -rnE '(var|let)[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]*:[^=]*\?[[:space:]]*=[[:space:]]*nil' .
 ```
 
+**Turning a property into a method? Key paths break, and `x.name` won't find
+them.** `Metric.color` became `color(in:)`; a grep for `metric\.color` reported
+every call site updated, but `.map(\.color)` in `SharedLogicTests` still
+referenced the old shape and CI failed with *"key path cannot refer to instance
+method"*. Search **every syntactic form** of a renamed member, not just the one
+you happen to picture:
+
+```bash
+# property access, key path, and implicit-member — all three, always
+grep -rnE '\\\.color|\.color\b|\bcolor:' --include='*.swift' .
+```
+
+A search pattern that covers one form of a name is the same failure as a regex
+that silently matches nothing — it reads like a clean codebase either way.
+
 **Container jobs get `sh`, not bash.** The SwiftLint job runs inside
 `ghcr.io/realm/swiftlint`, which ships no bash, so Actions falls back to
 `sh -e {0}` — dash. `set -euo pipefail` dies there with `Illegal option -o
