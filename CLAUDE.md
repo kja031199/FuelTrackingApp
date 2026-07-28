@@ -330,6 +330,20 @@ directory. Respect the `Shared/` framework rule when choosing where it goes.
   components, not `Color`**, precisely so `ContrastTests` can recompute every
   ratio each CI run — a `Color` is opaque and can't be measured. Details and the
   device-only checklist live in `docs/accessibility.md`.
+- **Re-deriving a palette value? The tint wash is mixed from the palette's own
+  value, so the constraint is self-referential.** `tintedBackground` composites
+  15% of *the color you are choosing* over the card, so darkening the ink to
+  raise contrast also darkens its background — the pair moves together and the
+  wash is the binding surface every time. An offline search that mixes the wash
+  from Apple's stock color solves a looser problem: it reported "clears 4.5"
+  while the shipped code measured 4.37:1, and CI caught it. Score a candidate
+  `c` against `blend(c, 0.15, card)`, never `blend(stock, 0.15, card)`. The
+  guard is `ContrastTests.theTintWashIsMixedFromThePaletteItself`.
+- **A constant that documents a bar isn't a bar until something compares a value
+  to it.** `minimumTextContrast` was 4.7 and the only test that mentioned it
+  asserted `4.7 >= 4.5` — so the palette was free to sit anywhere in between, and
+  it did. When you add a threshold constant, add the test that measures the real
+  values against it, not just one that inspects the constant.
 - **Chart audio graphs are iOS-only.** `AXChartDescriptor` doesn't exist on
   watchOS, so `MetricChartDescriptor` sits behind `#if os(iOS)` in
   `Shared/Views/ChartAudioGraph.swift`. The *data* half (`ChartAudioGraphData`)

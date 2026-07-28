@@ -81,13 +81,37 @@ only brightness moves, so "blue means fuel economy" still reads across screens.
 
 Every color clears **4.7:1** — margin over the 4.5 requirement — against all
 three surfaces it can land on: the card, the grouped background, and its own
-tint wash.
+tint wash. The measured worst case anywhere in the palette is **4.80:1**, on
+light-mode teal against its own wash.
+
+| Hue | Light: card / grouped / wash | Dark: card / grouped / wash |
+|---|---|---|
+| blue | 6.05 / 5.42 / **4.82** | 6.04 / 7.45 / **4.81** |
+| orange | 5.96 / 5.34 / **4.81** | 8.28 / 10.22 / 6.24 |
+| purple | 5.99 / 5.37 / **4.81** | 6.04 / 7.46 / **4.82** |
+| teal | 5.95 / 5.33 / **4.80** | 8.55 / 10.56 / 6.38 |
+| green | 5.98 / 5.36 / **4.82** | 8.42 / 10.39 / 6.35 |
+
+### The wash is the constraint, and it's self-referential
+
+The bolded column is the binding one in every case, and it has a trap in it. The
+tint wash is 15% of *the palette's own value* over the card — so darkening a
+color to fix its contrast also darkens the background it's being measured
+against. The pair moves together, and the ratio against the wash climbs far more
+slowly than the ratio against the card.
+
+Derive a candidate against a wash mixed from **Apple's** color instead and the
+numbers look fine while the app renders something ~0.35 short: the first attempt
+at this table cleared the card at 5.37:1 and failed the capsule at 4.37:1. CI
+caught it. `ContrastTests.theTintWashIsMixedFromThePaletteItself` now pins the
+recursion so a re-derivation can't quietly optimize the looser constraint.
 
 **This is enforced, not asserted.** Colors are stored as components rather than
 as `Color` values specifically so the ratios can be recomputed; `ContrastTests`
-does exactly that on every CI run, and a palette edit that drops below the bar
-fails the build. `ContrastTests` also keeps a test proving Apple's stock values
-*would* fail, so a future "simplification" back to `.orange` has a reason not to.
+does exactly that on every CI run — against both the 4.5 standard *and* the
+palette's own 4.7 margin — and a palette edit that drops below either bar fails
+the build. `ContrastTests` also keeps a test proving Apple's stock values *would*
+fail, so a future "simplification" back to `.orange` has a reason not to.
 
 ## Still needs a device
 

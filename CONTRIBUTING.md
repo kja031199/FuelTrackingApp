@@ -108,6 +108,14 @@ a `Color` is opaque and its contrast can't be read back, while components can, s
 `ContrastTests` recomputes every ratio on each CI run. Add a hue and you inherit
 that check; break one and the build goes red.
 
+**If you change a palette value, the tint wash is the constraint — and it's
+self-referential.** The tightest pairing in the app is a hue as text on a 15%
+wash of *itself*, and that wash is mixed from the value you're editing. Darken
+the ink and you darken its background too, so contrast against the wash barely
+moves while contrast against the card climbs. Choosing a value against a wash
+mixed from Apple's stock color measures something the app never renders; that
+mistake put three colors ~0.35 under the bar and only CI noticed.
+
 Full audit, including the before/after numbers and what still needs a device, is
 in [`docs/accessibility.md`](docs/accessibility.md).
 

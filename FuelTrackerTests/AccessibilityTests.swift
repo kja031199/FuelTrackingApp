@@ -99,14 +99,9 @@ struct ContrastTests {
     func accentColorsAreReadableOnEverySurfaceTheyLandOn(hue: AccentHue) {
         for scheme in schemes {
             let foreground = AccessiblePalette.components(hue, in: scheme)
-            let surfaces: [(String, RGBComponents)] = [
-                ("card", AccessiblePalette.cardBackground(in: scheme)),
-                ("grouped", AccessiblePalette.groupedBackground(in: scheme)),
-                // The capsule case: the hue's own 15% wash sits behind the hue
-                // as text, which is the tightest pairing in the app.
-                ("tint wash", AccessiblePalette.tintedBackground(hue, in: scheme))
-            ]
-            for (surface, background) in surfaces {
+            // Includes the capsule case: the hue's own 15% wash sits behind the
+            // hue as text, which is the tightest pairing in the app.
+            for (surface, background) in Self.surfaces(for: hue, in: scheme) {
                 let ratio = AccessiblePalette.contrastRatio(foreground, background)
                 #expect(
                     ratio >= requirement,
@@ -141,6 +136,77 @@ struct ContrastTests {
 
     @Test func theInternalMarginSitsAboveTheStandard() {
         #expect(AccessiblePalette.minimumTextContrast >= requirement)
+    }
+
+    /// The margin the palette *advertises*, enforced.
+    ///
+    /// `theInternalMarginSitsAboveTheStandard` only checks that the constant is
+    /// set above 4.5 — it never compared a single color to it, so
+    /// `minimumTextContrast` was documentation rather than a guarantee, and the
+    /// values were free to drift into the gap between the two numbers. They did.
+    @Test(arguments: AccentHue.allCases)
+    func theWholePaletteClearsItsOwnInternalMargin(hue: AccentHue) {
+        for scheme in schemes {
+            for (surface, background) in Self.surfaces(for: hue, in: scheme) {
+                let ratio = AccessiblePalette.contrastRatio(
+                    AccessiblePalette.components(hue, in: scheme), background
+                )
+                let margin = AccessiblePalette.minimumTextContrast
+                #expect(
+                    ratio >= margin,
+                    "\(hue.rawValue) on \(surface) in \(scheme) is \(ratio):1, under the palette's own \(margin):1"
+                )
+            }
+        }
+    }
+
+    /// Pins the recursion that makes the wash the binding constraint: it is
+    /// mixed from the palette's **own** value for the hue, not from a stock
+    /// color. Deriving replacement values against a stock-mixed wash optimizes a
+    /// looser constraint than the app renders and lands short of the bar.
+    @Test(arguments: AccentHue.allCases)
+    func theTintWashIsMixedFromThePaletteItself(hue: AccentHue) {
+        for scheme in schemes {
+            let ink = AccessiblePalette.components(hue, in: scheme)
+            let card = AccessiblePalette.cardBackground(in: scheme)
+            let alpha = AccessiblePalette.tintOpacity
+            func mix(_ f: Double, _ b: Double) -> Double { f * alpha + b * (1 - alpha) }
+
+            #expect(AccessiblePalette.tintedBackground(hue, in: scheme) == RGBComponents(
+                red: mix(ink.red, card.red),
+                green: mix(ink.green, card.green),
+                blue: mix(ink.blue, card.blue)
+            ))
+        }
+    }
+
+    /// The wash is the tightest of the three surfaces, everywhere. This is the
+    /// structural reason the palette is derived against it: clearing the card
+    /// says nothing about clearing the capsule.
+    @Test(arguments: AccentHue.allCases)
+    func theTintWashIsAlwaysTheBindingConstraint(hue: AccentHue) {
+        for scheme in schemes {
+            let ink = AccessiblePalette.components(hue, in: scheme)
+            let wash = AccessiblePalette.contrastRatio(
+                ink, AccessiblePalette.tintedBackground(hue, in: scheme)
+            )
+            let card = AccessiblePalette.contrastRatio(ink, AccessiblePalette.cardBackground(in: scheme))
+            let grouped = AccessiblePalette.contrastRatio(ink, AccessiblePalette.groupedBackground(in: scheme))
+
+            #expect(wash <= card, "\(hue.rawValue)/\(scheme): wash \(wash) is not tighter than card \(card)")
+            #expect(wash <= grouped, "\(hue.rawValue)/\(scheme): wash \(wash) is not tighter than grouped \(grouped)")
+        }
+    }
+
+    /// The three surfaces a hue can land on, in a given scheme.
+    private static func surfaces(
+        for hue: AccentHue, in scheme: ColorScheme
+    ) -> [(String, RGBComponents)] {
+        [
+            ("card", AccessiblePalette.cardBackground(in: scheme)),
+            ("grouped", AccessiblePalette.groupedBackground(in: scheme)),
+            ("tint wash", AccessiblePalette.tintedBackground(hue, in: scheme))
+        ]
     }
 
     @Test func contrastMathMatchesTheWCAGReferencePoints() {
