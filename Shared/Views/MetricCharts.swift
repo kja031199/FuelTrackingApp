@@ -47,6 +47,14 @@ extension Array where Element == DateValuePoint {
 struct MetricLineChart: View {
     let points: [DateValuePoint]
     let metric: Metric
+    /// Title VoiceOver announces for the audio graph. Falls back to the
+    /// metric's generic name, which is enough on the watch (no audio graphs
+    /// there) but vague on a dashboard with two distance charts.
+    ///
+    /// Declared here, not at the end of the struct: a memberwise initializer
+    /// takes its arguments in *declaration* order, and every call site passes
+    /// this right after `metric`.
+    var accessibilityTitle: String? = nil
     var average: Double? = nil
     var compact = false
     /// Formats a value for the selection callout and average label.
@@ -55,10 +63,6 @@ struct MetricLineChart: View {
     var yAxisLabel: ((Double) -> String)? = nil
     /// Above this many points, the plotted series is downsampled for display.
     var downsampleThreshold = 500
-    /// Title VoiceOver announces for the audio graph. Falls back to the
-    /// metric's generic name, which is enough on the watch (no audio graphs
-    /// there) but vague on a dashboard with two distance charts.
-    var accessibilityTitle: String? = nil
 
     @State private var selectedDate: Date?
     @Environment(\.colorScheme) private var colorScheme
@@ -149,10 +153,11 @@ struct MonthlyBarChart: View {
     let totals: [MonthlyTotal]
     let value: KeyPath<MonthlyTotal, Double>
     let metric: Metric
+    /// Title VoiceOver announces for the audio graph. Declaration order is the
+    /// memberwise initializer's argument order — see `MetricLineChart`.
+    var accessibilityTitle: String? = nil
     var compact = false
     var yAxisLabel: ((Double) -> String)? = nil
-    /// Title VoiceOver announces for the audio graph.
-    var accessibilityTitle: String? = nil
 
     @Environment(\.colorScheme) private var colorScheme
 

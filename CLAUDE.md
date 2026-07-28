@@ -61,6 +61,21 @@ Consequences:
 - Balance checks catch mismatched delimiters, not type errors. Read the code you
   write as if compiling it in your head — CI is the backstop, not a substitute
   for writing code that compiles.
+- **Adding a property to a SwiftUI struct? Put it where the callers pass it.**
+  Swift's memberwise `init` takes arguments in **declaration order**, so adding a
+  property at the end of a struct and passing it mid-call fails to compile:
+  `Incorrect argument labels in call (have 'points:metric:accessibilityTitle:…',
+  expected '…:downsampleThreshold:accessibilityTitle:')`. This shipped to CI
+  once, at 10x billing, for a one-line reordering.
+  `scripts/check_memberwise_order.py` catches it here — it reproduced that exact
+  error string offline:
+  ```bash
+  python3 scripts/check_memberwise_order.py            # default structs
+  python3 scripts/check_memberwise_order.py MyView     # any struct by name
+  ```
+  It's a regex reader, not a Swift parser, so it is deliberately **not** a CI
+  gate: a heuristic shouldn't block a merge, and CI has a real compiler. Treat a
+  failure as real and a pass as encouraging, not conclusive.
 
 ### What CI actually costs, and how not to waste it
 

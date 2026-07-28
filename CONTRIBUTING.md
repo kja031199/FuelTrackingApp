@@ -126,6 +126,11 @@ in [`docs/accessibility.md`](docs/accessibility.md).
   coverage, not only the expected case.
 - View bodies are exercised in `ViewRenderingTests`, which hosts screens in a
   real window and forces layout.
+- **Before pushing a change that adds a property to a SwiftUI view struct**, run
+  `python3 scripts/check_memberwise_order.py`. Swift's memberwise initializer
+  takes arguments in declaration order, so a property added at the end of a
+  struct but passed in the middle of a call won't compile — and finding that out
+  from a macOS CI run costs 10x-billed minutes for a one-line fix.
 - **Tests stay off real device services.** Anything hardware-backed goes behind
   a protocol and is stubbed. Concretely, the render harness injects
   `StubAuthenticator`, never `BiometricAuthenticator` — `AppLock.init` and
