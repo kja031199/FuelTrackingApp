@@ -180,6 +180,8 @@ struct FillUpsListView: View {
 }
 
 struct FillUpRow: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let entry: FuelEntry
     let mpg: Double?
     var isSuspect = false
@@ -212,16 +214,24 @@ struct FillUpRow: View {
                         .font(.caption.weight(.semibold))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
-                        .background(.blue.opacity(0.15), in: Capsule())
-                        .foregroundStyle(.blue)
+                        .background(
+                            AccessiblePalette.color(.blue, in: colorScheme)
+                                .opacity(AccessiblePalette.tintOpacity),
+                            in: Capsule()
+                        )
+                        .foregroundStyle(AccessiblePalette.color(.blue, in: colorScheme))
                 }
                 if isSuspect {
                     Label("Missed a fill?", systemImage: "exclamationmark.triangle.fill")
                         .font(.caption.weight(.semibold))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
-                        .background(.orange.opacity(0.15), in: Capsule())
-                        .foregroundStyle(.orange)
+                        .background(
+                            AccessiblePalette.color(.orange, in: colorScheme)
+                                .opacity(AccessiblePalette.tintOpacity),
+                            in: Capsule()
+                        )
+                        .foregroundStyle(AccessiblePalette.color(.orange, in: colorScheme))
                 }
                 if entry.missedPreviousFillUp {
                     Text("Missed fill before")

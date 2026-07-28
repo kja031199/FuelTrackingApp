@@ -28,11 +28,15 @@ user's private iCloud.
   the units system (`MeasurementUnits`, `UnitSettings`), privacy/security
   (`PrivacySettings`, `LocationPrivacy`, `StoreProtection`, `AppLock`), the
   list search/filter (`FillUpFilter`, `DashboardTimeRange`), the first-run
-  gate (`OnboardingGate`), and the stats memo (`FuelStatisticsMemo`).
+  gate (`OnboardingGate`), the stats memo (`FuelStatisticsMemo`), and the
+  contrast-safe colours (`AccessiblePalette`, `Metric`).
 - `FuelTracker/` — the iPhone app (thin views) + iOS-only `Scanning/` importers
   and `Services/` (Vision, ImageIO, CoreLocation/MapKit, PhotosUI).
 - `FuelTrackerWatch/` — the watch app (thin views).
 - `FuelTrackerTests/` — Swift Testing unit + rendering tests.
+- `Shared/Views/` — the shared chart components (`MetricCharts`) and their
+  accessibility layers (`ChartAccessibility` spoken summaries,
+  `ChartAudioGraph` audio graphs).
 - `FuelTracker/FuelTracker.docc/` — DocC catalog (domain essays + curated
   symbol docs); build with ⌃⌘D. Keep the essays in sync when the MPG or
   scanning logic changes.
@@ -57,6 +61,21 @@ Consequences:
 - Balance checks catch mismatched delimiters, not type errors. Read the code you
   write as if compiling it in your head — CI is the backstop, not a substitute
   for writing code that compiles.
+- **Adding a property to a SwiftUI struct? Put it where the callers pass it.**
+  Swift's memberwise `init` takes arguments in **declaration order**, so adding a
+  property at the end of a struct and passing it mid-call fails to compile:
+  `Incorrect argument labels in call (have 'points:metric:accessibilityTitle:…',
+  expected '…:downsampleThreshold:accessibilityTitle:')`. This shipped to CI
+  once, at 10x billing, for a one-line reordering.
+  `scripts/check_memberwise_order.py` catches it here — it reproduced that exact
+  error string offline:
+  ```bash
+  python3 scripts/check_memberwise_order.py            # default structs
+  python3 scripts/check_memberwise_order.py MyView     # any struct by name
+  ```
+  It's a regex reader, not a Swift parser, so it is deliberately **not** a CI
+  gate: a heuristic shouldn't block a merge, and CI has a real compiler. Treat a
+  failure as real and a pass as encouraging, not conclusive.
 
 ### What CI actually costs, and how not to waste it
 
@@ -127,6 +146,21 @@ and confirming it matches something you know exists:
 # Trust a "0 hits" only after the same regex finds the case you planted.
 grep -rnE '(var|let)[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]*:[^=]*\?[[:space:]]*=[[:space:]]*nil' .
 ```
+
+**Turning a property into a method? Key paths break, and `x.name` won't find
+them.** `Metric.color` became `color(in:)`; a grep for `metric\.color` reported
+every call site updated, but `.map(\.color)` in `SharedLogicTests` still
+referenced the old shape and CI failed with *"key path cannot refer to instance
+method"*. Search **every syntactic form** of a renamed member, not just the one
+you happen to picture:
+
+```bash
+# property access, key path, and implicit-member — all three, always
+grep -rnE '\\\.color|\.color\b|\bcolor:' --include='*.swift' .
+```
+
+A search pattern that covers one form of a name is the same failure as a regex
+that silently matches nothing — it reads like a clean codebase either way.
 
 **Container jobs get `sh`, not bash.** The SwiftLint job runs inside
 `ghcr.io/realm/swiftlint`, which ships no bash, so Actions falls back to
@@ -287,6 +321,37 @@ directory. Respect the `Shared/` framework rule when choosing where it goes.
     tuned to US pumps. Manual entry supports every unit.
   - The watch keeps its own preference in its local `UserDefaults` (syncing it
     with the phone needs a shared App Group, deferred with iCloud).
+- **Accent colors go through `AccessiblePalette`, never `.orange`/`.blue`/etc.**
+  Apple's stock palette fails WCAG 2.2 AA in light mode across the board (orange
+  2.20:1 on a white card, where text needs 4.5:1; orange/teal/green also fail the
+  3:1 bar for chart marks). `AccessiblePalette.color(_:in:)` and
+  `Metric.color(in:)` take a `ColorScheme`; views hold
+  `@Environment(\.colorScheme)` and pass it down. Colors are stored as **RGB
+  components, not `Color`**, precisely so `ContrastTests` can recompute every
+  ratio each CI run — a `Color` is opaque and can't be measured. Details and the
+  device-only checklist live in `docs/accessibility.md`.
+- **Re-deriving a palette value? The tint wash is mixed from the palette's own
+  value, so the constraint is self-referential.** `tintedBackground` composites
+  15% of *the color you are choosing* over the card, so darkening the ink to
+  raise contrast also darkens its background — the pair moves together and the
+  wash is the binding surface every time. An offline search that mixes the wash
+  from Apple's stock color solves a looser problem: it reported "clears 4.5"
+  while the shipped code measured 4.37:1, and CI caught it. Score a candidate
+  `c` against `blend(c, 0.15, card)`, never `blend(stock, 0.15, card)`. The
+  guard is `ContrastTests.theTintWashIsMixedFromThePaletteItself`.
+- **A constant that documents a bar isn't a bar until something compares a value
+  to it.** `minimumTextContrast` was 4.7 and the only test that mentioned it
+  asserted `4.7 >= 4.5` — so the palette was free to sit anywhere in between, and
+  it did. When you add a threshold constant, add the test that measures the real
+  values against it, not just one that inspects the constant.
+- **Chart audio graphs are iOS-only.** `AXChartDescriptor` doesn't exist on
+  watchOS, so `MetricChartDescriptor` sits behind `#if os(iOS)` in
+  `Shared/Views/ChartAudioGraph.swift`. The *data* half (`ChartAudioGraphData`)
+  is deliberately plain and platform-free so it's testable without a simulator:
+  it drops non-finite samples rather than clamping them, returns `nil` rather
+  than an empty graph when nothing is usable, and pads a flat series so the axis
+  isn't zero-width (with a fixed pad at exactly zero, where a proportional one
+  stays zero).
 - `Winner.notContested` (not `.none`) is the showdown "tie" case — the rename
   avoided an optional-chaining footgun (`row("x")?.winner == .none`).
 - Location capture is user-controllable (`PrivacySettings.locationCaptureEnabled`,

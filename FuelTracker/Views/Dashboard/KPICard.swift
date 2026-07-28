@@ -5,6 +5,7 @@ struct KPICard: View {
     let kpi: KPI
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         // At accessibility text sizes let the text wrap and grow (the grid
@@ -15,7 +16,7 @@ struct KPICard: View {
             HStack(spacing: 6) {
                 Image(systemName: kpi.icon)
                     .font(.caption)
-                    .foregroundStyle(kpi.metric.color)
+                    .foregroundStyle(kpi.metric.color(in: colorScheme))
                 Text(kpi.title)
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)

@@ -5,6 +5,7 @@ import VisionKit
 /// validates it against the vehicle's history before it can be saved.
 struct OdometerScannerView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     let previousOdometer: Double?
     let typicalMilesPerFill: Double?
     let onAccept: (Double) -> Void
@@ -91,7 +92,7 @@ struct OdometerScannerView: View {
         }
         return Label(message, systemImage: icon)
             .font(.caption2)
-            .foregroundStyle(validation.isWarning ? Color.orange : Color.secondary)
+            .foregroundStyle(validation.isWarning ? AccessiblePalette.color(.orange, in: colorScheme) : Color.secondary)
             .multilineTextAlignment(.center)
     }
 }

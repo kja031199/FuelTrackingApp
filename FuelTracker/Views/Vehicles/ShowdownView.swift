@@ -7,6 +7,7 @@ import Charts
 struct ShowdownView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(UnitSettings.self) private var unitSettings: UnitSettings?
+    @Environment(\.colorScheme) private var colorScheme
     let vehicles: [Vehicle]
 
     @State private var leftID: UUID?
@@ -155,7 +156,7 @@ struct ShowdownView: View {
             .font(.callout)
             .monospacedDigit()
             .fontWeight(highlighted ? .semibold : .regular)
-            .foregroundStyle(highlighted ? metric.color : (value == nil ? Color.secondary : Color.primary))
+            .foregroundStyle(highlighted ? metric.color(in: colorScheme) : (value == nil ? Color.secondary : Color.primary))
     }
 
     private func verdict(_ showdown: VehicleShowdown) -> String {
@@ -175,6 +176,8 @@ struct ShowdownView: View {
 /// Two vehicles' MPG series overlaid, with a legend. Identical names are
 /// disambiguated so their lines don't merge.
 struct ShowdownMPGChart: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let leftName: String
     let rightName: String
     let leftSeries: [DateValuePoint]
@@ -215,7 +218,10 @@ struct ShowdownMPGChart: View {
                 .accessibilityValue("\(point.value.formatted(.number.precision(.fractionLength(1)))) \(axisLabel)")
             }
         }
-        .chartForegroundStyleScale([leftLabel: Color.blue, rightLabel: Color.orange])
+        .chartForegroundStyleScale([
+            leftLabel: AccessiblePalette.color(.blue, in: colorScheme),
+            rightLabel: AccessiblePalette.color(.orange, in: colorScheme)
+        ])
         .chartYScale(domain: .automatic(includesZero: false))
         .chartLegend(position: .bottom)
     }

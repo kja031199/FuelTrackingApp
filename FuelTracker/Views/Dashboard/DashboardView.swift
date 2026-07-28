@@ -12,6 +12,7 @@ struct DashboardView: View {
     @State private var entryBeingReviewed: FuelEntry?
     @State private var statsMemo = FuelStatisticsMemo()
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(UnitSettings.self) private var unitSettings: UnitSettings?
 
     private var units: UnitPreferences { unitSettings?.preferences ?? .us }
@@ -124,6 +125,7 @@ struct DashboardView: View {
                         MetricLineChart(
                             points: economySeries,
                             metric: .economy,
+                            accessibilityTitle: "Fuel Economy",
                             average: statistics.averageMPG.flatMap { units.economy.fromMPG($0) },
                             valueLabel: { "\($0.formatted(.number.precision(.fractionLength(1)))) \(economyAbbr)" }
                         )
@@ -146,6 +148,7 @@ struct DashboardView: View {
                         MetricLineChart(
                             points: statistics.priceSeries,
                             metric: .price,
+                            accessibilityTitle: "Gas Price",
                             valueLabel: { Format.fuelPrice($0, per: units.volume) },
                             yAxisLabel: { Format.plainCurrency($0 / units.volume.fromGallons(1)) }
                         )
@@ -168,6 +171,7 @@ struct DashboardView: View {
                         MetricLineChart(
                             points: statistics.odometerSeries,
                             metric: .distance,
+                            accessibilityTitle: "Odometer",
                             valueLabel: { "\(Format.distance($0, in: units.distance)) \(units.distance.abbreviation)" },
                             yAxisLabel: { Format.compactDistance($0, in: units.distance) }
                         )
@@ -180,6 +184,7 @@ struct DashboardView: View {
                             totals: statistics.monthlyTotals,
                             value: \.totalSpent,
                             metric: .spending,
+                            accessibilityTitle: "Monthly Spending",
                             yAxisLabel: Format.wholeCurrency
                         )
                     }
@@ -189,6 +194,7 @@ struct DashboardView: View {
                             totals: statistics.monthlyTotals,
                             value: \.miles,
                             metric: .distance,
+                            accessibilityTitle: "Monthly Distance",
                             yAxisLabel: { Format.compactDistance($0, in: units.distance) }
                         )
                     }
@@ -238,7 +244,7 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Label("Possible missed fill-up", systemImage: "exclamationmark.triangle.fill")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(AccessiblePalette.color(.orange, in: colorScheme))
 
                 Text(suspectMessage(for: entry, statistics: statistics))
                     .font(.caption)
@@ -251,7 +257,11 @@ struct DashboardView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
-            .background(.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(
+                AccessiblePalette.color(.orange, in: colorScheme)
+                    .opacity(AccessiblePalette.tintOpacity),
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
         }
         .buttonStyle(.plain)
     }

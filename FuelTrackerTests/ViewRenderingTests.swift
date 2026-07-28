@@ -23,7 +23,8 @@ private func render(
     container: ModelContainer,
     units: UnitSettings = UnitSettings(),
     privacy: PrivacySettings = PrivacySettings(),
-    appLock: AppLock? = nil
+    appLock: AppLock? = nil,
+    colorScheme: ColorScheme = .light
 ) {
     // Construct the default lock inside the body: AppLock's init is
     // @MainActor-isolated, which a default argument expression can't call.
@@ -44,6 +45,7 @@ private func render(
                 .environment(units)
                 .environment(privacy)
                 .environment(lock)
+                .environment(\.colorScheme, colorScheme)
         )
     )
     let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
@@ -697,6 +699,51 @@ struct DynamicTypeRenderingTests {
         render(
             ShowdownView(vehicles: [a, b]).dynamicTypeSize(.accessibility5),
             container: container
+        )
+    }
+}
+
+// MARK: - Dark mode
+
+/// Every screen that resolves a color through `AccessiblePalette` now reads
+/// `@Environment(\.colorScheme)`. Rendering in dark mode executes the branch
+/// the default (light) render tests never reach.
+@MainActor
+struct DarkModeRenderingTests {
+    @Test func dashboardRendersInDarkMode() {
+        let (container, vehicle) = Scenario.populated()
+        render(
+            DashboardView(selectedVehicle: vehicle, vehicles: [vehicle], selectedVehicleID: .constant("")),
+            container: container,
+            colorScheme: .dark
+        )
+    }
+
+    @Test func fillUpsListRendersItsTintedCapsulesInDarkMode() {
+        // The capsules are the tightest contrast pairing in the app: the hue as
+        // text on a 15% wash of itself.
+        let (container, vehicle) = Scenario.populated()
+        render(
+            FillUpsListView(selectedVehicle: vehicle, vehicles: [vehicle], selectedVehicleID: .constant("")),
+            container: container,
+            colorScheme: .dark
+        )
+    }
+
+    @Test func showdownRendersInDarkMode() {
+        let (container, vehicle) = Scenario.populated()
+        render(ShowdownView(vehicles: [vehicle]), container: container, colorScheme: .dark)
+    }
+
+    @Test func dashboardSurvivesPathologicalHistoryInDarkMode() {
+        // Dark mode plus the hostile fixture: duplicate odometers, a zero-gallon
+        // fill, a future date. Chart colors and audio-graph construction both
+        // run over data that can't be sonified cleanly.
+        let (container, vehicle) = Scenario.pathological()
+        render(
+            DashboardView(selectedVehicle: vehicle, vehicles: [vehicle], selectedVehicleID: .constant("")),
+            container: container,
+            colorScheme: .dark
         )
     }
 }

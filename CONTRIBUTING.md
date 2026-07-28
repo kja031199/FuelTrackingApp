@@ -93,6 +93,32 @@ Photos are attacker-controllable. All image ingestion goes through `ReceiptImage
 / the bounded ImageIO thumbnail path — never a raw `UIImage(data:)`, which is a
 decompression-bomb vector. Persist only re-encoded, size-bounded data.
 
+### 7. Accent colors go through `AccessiblePalette`
+
+Never use `.orange`, `.blue`, `.teal`, `.green`, or `.purple` directly for text
+or chart marks. Apple's stock palette is tuned to look right, not to pass a
+contrast threshold, and **every one of those hues fails WCAG 2.2 AA in light
+mode** — orange measured 2.20:1 against a white card where 4.5:1 is required,
+and orange, teal and green failed even the 3:1 bar for chart marks.
+
+Use `AccessiblePalette.color(_:in:)` or `Metric.color(in:)`, both of which take
+the color scheme; views hold `@Environment(\.colorScheme)` and pass it down. The
+palette stores colors as **components rather than `Color` values** for a reason:
+a `Color` is opaque and its contrast can't be read back, while components can, so
+`ContrastTests` recomputes every ratio on each CI run. Add a hue and you inherit
+that check; break one and the build goes red.
+
+**If you change a palette value, the tint wash is the constraint — and it's
+self-referential.** The tightest pairing in the app is a hue as text on a 15%
+wash of *itself*, and that wash is mixed from the value you're editing. Darken
+the ink and you darken its background too, so contrast against the wash barely
+moves while contrast against the card climbs. Choosing a value against a wash
+mixed from Apple's stock color measures something the app never renders; that
+mistake put three colors ~0.35 under the bar and only CI noticed.
+
+Full audit, including the before/after numbers and what still needs a device, is
+in [`docs/accessibility.md`](docs/accessibility.md).
+
 ## Testing
 
 - Tests use **Swift Testing** (`@Test`, `#expect`, `#require`), not XCTest.
@@ -108,6 +134,11 @@ decompression-bomb vector. Persist only re-encoded, size-bounded data.
   coverage, not only the expected case.
 - View bodies are exercised in `ViewRenderingTests`, which hosts screens in a
   real window and forces layout.
+- **Before pushing a change that adds a property to a SwiftUI view struct**, run
+  `python3 scripts/check_memberwise_order.py`. Swift's memberwise initializer
+  takes arguments in declaration order, so a property added at the end of a
+  struct but passed in the middle of a call won't compile — and finding that out
+  from a macOS CI run costs 10x-billed minutes for a one-line fix.
 - **Tests stay off real device services.** Anything hardware-backed goes behind
   a protocol and is stubbed. Concretely, the render harness injects
   `StubAuthenticator`, never `BiometricAuthenticator` — `AppLock.init` and
@@ -204,6 +235,7 @@ lychee --offline --include-fragments '**/*.md'
 
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — targets, layers, and the load-bearing invariants.
 - [`docs/security-review.md`](docs/security-review.md) — threat model and hardening decisions.
+- [`docs/accessibility.md`](docs/accessibility.md) — what's supported, the contrast audit, and the device checklist.
 - [`README.md`](README.md) — features, running on-device, enabling iCloud sync, the test suite.
 - **DocC catalog** (`FuelTracker/FuelTracker.docc`) — browsable domain reference; the "How MPG Is Computed" and "Scanning Heuristics" essays explain the subtle logic. Build with ⌃⌘D.
 - [`CLAUDE.md`](CLAUDE.md) — the same conventions as a quick operating manual for AI assistants.

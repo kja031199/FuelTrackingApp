@@ -155,6 +155,10 @@ The thin watch-only view structs aren't in the iOS test bundle (watchOS tests ru
 
 FuelTracker keeps your data on your device — there's no server, no account, and no analytics or third-party tracking. Data syncs only to your own private iCloud (optional, off by default), and station detection sends coordinates to Apple Maps only when you use it. Full details, plus the App Store "App Privacy" data-disclosure checklist, are in [`docs/privacy.md`](docs/privacy.md). (Before submitting to the App Store, fill in the contact/URL placeholders there and host the policy at a public link.)
 
+## Accessibility
+
+VoiceOver labels and spoken chart summaries, **audio graphs** so a chart's shape can be played as sound, Dynamic Type through the accessibility sizes, Reduce Motion, and a colour palette that meets **WCAG 2.2 AA** in both light and dark — enforced by a test that recomputes every contrast ratio on each CI run, not by a one-time audit. What's supported, the measured before/after numbers, and the checklist of items that still need a physical device are in [`docs/accessibility.md`](docs/accessibility.md).
+
 ## Roadmap
 
 Where the app is headed — phased plan with links to tracking issues — is in [`docs/ROADMAP.md`](docs/ROADMAP.md). In short: infrastructure & quality first (CI, accessibility), then deepening the core on the free account (export, reminders, EV support, maintenance log, trip tagging), with iCloud/CloudKit/App-Store features deferred until a paid Apple Developer account.

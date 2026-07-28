@@ -26,11 +26,13 @@ struct WatchKPISection: View {
 struct WatchKPICell: View {
     let kpi: KPI
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(kpi.title)
                 .font(.system(size: 11))
-                .foregroundStyle(kpi.metric.color)
+                .foregroundStyle(kpi.metric.color(in: colorScheme))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             Text(kpi.value ?? "—")
