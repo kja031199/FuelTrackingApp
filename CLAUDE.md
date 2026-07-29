@@ -109,16 +109,44 @@ Runs are still not free of *your* time, and a wasted run is still a wasted
 - Tests run **serially** (`-parallel-testing-enabled NO`): the suite is short and
   main-actor-bound, so parallel workers buy nothing and only interleave the
   output. With one worker, the last test named in the log is the one that stuck.
-- Docs-only changes are skipped via `paths-ignore`. Because skipped runs report
-  no status, don't make this a *required* check while that's in place.
+- **It runs on every PR, docs included, and has no `paths-ignore` (#83).** It
+  used to skip Markdown to save billed minutes, but a skipped run reports **no
+  status**, and a check that sometimes reports nothing can't be *required* — a
+  docs-only PR waits forever for a result that never comes. Runs are free now,
+  so the skip bought nothing and cost an unprotectable `main`. Adding
+  `paths-ignore` back means giving up required-check status; don't do one
+  without deciding the other.
+- **Coverage is on** (`-enableCodeCoverage YES`, #85) and printed to the job
+  summary via `xcrun xccov view --report`. The reporting step is strictly
+  informational and ends in `true` — a coverage hiccup must never redden a
+  passing build.
 
 ### The cheap Linux checks — `.github/workflows/checks.yml`
 
 Three jobs on `ubuntu-latest`, parallel and independent: **gitleaks** (secret
 scan), **SwiftLint** (lint), **lychee** (Markdown links).
 Deliberately no `paths-ignore` — they're cheap, and a docs change is exactly when
-the link check matters. They always report a status, so unlike `ci.yml` these are
-the ones that can be *required* checks.
+the link check matters.
+
+These three plus `ci.yml` are the four **required** checks on `main`. All four
+always report a status, which is what makes requiring them safe.
+`links-external.yml` (weekly) and `codeql.yml` are deliberately **not** required
+— see below.
+
+### Static analysis — `.github/workflows/codeql.yml`
+
+CodeQL over Swift on PRs, pushes to `main`, and weekly. **Swift analysis needs a
+macOS runner and a real build** — CodeQL observes an actual compile rather than
+reading source, so the job runs an explicit `xcodebuild build-for-testing` that
+mirrors `ci.yml`. It does *not* use `autobuild`: that guesses the scheme, and
+with an embedded watch target plus a test target a wrong guess analyses the
+wrong thing and reports a confident, meaningless result.
+
+It needs `security-events: write` to upload findings — the one workflow here
+that requires more than `contents: read`. Scoped to the job, not the workflow.
+
+Not a required check, on purpose: a scanner that blocks merges before its output
+has been triaged just teaches people to route around it.
 
 You **can** run all three in this environment, unlike the iOS suite. Their
 Linux binaries download and execute here:

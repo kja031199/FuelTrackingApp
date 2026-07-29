@@ -166,19 +166,37 @@ The repository is **public**, so GitHub-hosted standard runners — macOS includ
 — are free. Workflows are split by *speed and determinism* now, not by cost.
 
 **`ci.yml` — build & test.** A macOS runner builds the app and runs the suite on
-an iOS Simulator (see Testing above), ~6.5 minutes a run. It skips docs-only
-changes, and because a skipped run reports no status, it isn't safe as a
-*required* check while that's true.
+an iOS Simulator (see Testing above), ~6.5 minutes a run. It runs on **every**
+pull request, docs-only ones included, and reports coverage in the job summary.
 
 **`checks.yml` — three fast Linux checks**, running in parallel and independent
-of each other. These never skip, so they always report a status — which makes
-them the ones safe to require.
+of each other.
+
+Together these four are the **required** checks on `main` — none of them skip,
+so all four always report a status, which is what makes requiring them safe:
 
 | Check | Tool | What fails it |
 |---|---|---|
+| Build & test | xcodebuild | A compile error or a failing test |
 | Secret scan | gitleaks | A credential-shaped string anywhere in **any commit** |
 | Lint | SwiftLint | Any violation of the rules in `.swiftlint.yml` (`--strict`) |
 | Docs links | lychee | A broken relative link or `#heading-anchor` in Markdown |
+
+**Why `ci.yml` no longer skips docs.** It used to, via `paths-ignore`, purely to
+save billed minutes. But a skipped run reports **no status at all**, and a check
+that sometimes reports nothing can never be *required* — a docs-only PR would
+wait forever for a result that never arrives. Now that runs are free, a
+~6.5-minute run on a Markdown edit is a fine price for a `main` that can
+actually block a red build. Don't reintroduce `paths-ignore` without also giving
+up required-check status.
+
+**`codeql.yml` — static analysis, on PRs and weekly.** Builds the project on
+macOS and runs CodeQL's `security-and-quality` suite over Swift; findings land
+in Security → Code scanning. Not a linter — it does dataflow and reachability,
+which is a different question from the one SwiftLint answers. Deliberately **not
+required**: a scanner that blocks merges before anyone has triaged its output
+just teaches people to bypass it. Make it required once it has been quiet for a
+while.
 
 **`links-external.yml` — external links, weekly.** Runs lychee *without*
 `--offline` against the real network every Monday, plus on demand via
@@ -231,6 +249,13 @@ lychee --include-fragments --max-retries 3 --timeout 20 '**/*.md'
   secret committed and then deleted in a later commit is still leaked. If one
   ever lands, allowlisting is not the fix: rotate the credential first, then
   purge the history, then re-scan.
+- **GitHub push protection may reject your push before gitleaks ever sees it.**
+  That's a second, earlier line of defence, not a duplicate: gitleaks finds a
+  secret already committed, push protection refuses the push so nothing needs
+  rotating and no history needs rewriting. If it blocks you, the remedy is to
+  remove the credential and rewrite your local commits — **not** to click
+  "allow". Bypassing it means the secret enters history, and then the rotate →
+  purge → re-scan paragraph above applies to you.
 - `.github/dependabot.yml` bumps the pinned actions monthly, grouping minor and
   patch into one PR and leaving majors separate. The gitleaks and lychee versions
   are plain release downloads Dependabot can't see; they sit in an `env:` block
