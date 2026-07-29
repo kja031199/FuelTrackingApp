@@ -7,31 +7,23 @@ name: CI
 # signing or a development team (DEVELOPMENT_TEAM ships empty), so this works on
 # the same free-account setup the project targets.
 #
-# Docs-only changes skip this workflow. On a private repo macOS runners bill at
-# a 10x multiplier against the monthly Actions allowance, and a Markdown edit
-# can't break the build, so spending ~10 minutes of quota on one is waste.
-# Deliberately NOT ignored: `.github/**`, so a change to this workflow is still
-# validated by running it. (Revisit `**/*.md` if a DocC build check is ever
-# added — DocC articles are Markdown and could then affect the result.)
+# This workflow runs on **every** pull request, including docs-only ones (#83).
 #
-# Note: because skipped runs report no status, don't make this a *required*
-# status check while `paths-ignore` is in place — a docs-only PR would wait
-# forever for a check that never runs.
-
-# (The two lists are duplicated on purpose: GitHub Actions doesn't support YAML
-# anchors/aliases, so keep them in sync by hand.)
+# It used to skip Markdown and `docs/**` via `paths-ignore`, purely to save
+# money: a private repo billed macOS at 10x against a ~200 macOS-minute monthly
+# allowance, and a Markdown edit can't break the build. The repo is public now
+# and standard runners are free, so that saving is worth nothing — while its
+# cost was real. A skipped run reports **no status at all**, and a check that
+# sometimes reports nothing can never be a *required* check, because a docs-only
+# PR would wait forever for a result that never arrives.
+#
+# Trading a ~6.5-minute run on docs PRs for a branch protection rule that can
+# actually block a red build is the whole point. Don't reintroduce
+# `paths-ignore` here without also giving up required-check status.
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - '.gitignore'
   pull_request:
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - '.gitignore'
 
 # A newer push to the same branch supersedes an in-flight run.
 concurrency:
@@ -52,11 +44,10 @@ jobs:
     # `macos-latest` keeps the toolchain current with no maintenance. Pin it
     # (e.g. `macos-15`) if you'd rather have byte-reproducible runs.
     runs-on: macos-latest
-    # Deliberately tight: macOS minutes bill at 10x, so a hung or pathologically
-    # slow run should fail fast rather than quietly burn the monthly allowance.
-    # A healthy run is ~4 minutes (≈1 min build + seconds of tests); 20 leaves
-    # generous headroom while capping a hang at ~200 billed minutes instead of
-    # 300. Per-step timeouts below fail even faster and say *where* it stuck.
+    # A healthy run is ~6.5 minutes end to end. The cap is about bounding a hang,
+    # not billing (runs are free on a public repo) — a wedged process should fail
+    # fast rather than sit for six hours holding the branch hostage. Per-step
+    # timeouts below fail even faster and say *where* it stuck.
     timeout-minutes: 20
 
     steps:
@@ -111,8 +102,10 @@ jobs:
       # The flags below trim work that only matters to Xcode's UI, not to CI:
       #   COMPILER_INDEX_STORE_ENABLE=NO  skip index-while-building
       #   ONLY_ACTIVE_ARCH=YES            build one slice, not a fat binary
-      #   -enableCodeCoverage NO          skip profiling instrumentation
-      #                                   (coverage still available locally ⌘U)
+      #   -enableCodeCoverage YES         profiling instrumentation. This was NO
+      #                                   to save billed minutes; with runs free
+      #                                   the trade flipped, and 422 tests had
+      #                                   never reported a coverage number (#85).
       #   -skipMacroValidation            don't re-validate macro fingerprints
       #   -parallel-testing-enabled NO    run the suite serially. The screens are
       #                                   hosted in a real UIWindow on the main
@@ -137,11 +130,36 @@ jobs:
             -scheme FuelTracker \
             -destination "id=${{ steps.simulator.outputs.udid }}" \
             -resultBundlePath TestResults.xcresult \
-            -enableCodeCoverage NO \
+            -enableCodeCoverage YES \
             -skipMacroValidation \
             -parallel-testing-enabled NO \
             ONLY_ACTIVE_ARCH=YES \
             COMPILER_INDEX_STORE_ENABLE=NO
+
+      # Informational only — this must never turn a passing build red. A missing
+      # or malformed result bundle, or a changed `xccov` interface, is not a test
+      # failure, so every command is tolerant and the step ends with `true`.
+      # `if: success()` keeps it from adding noise to an already-failing job.
+      - name: Coverage summary
+        if: ${{ success() }}
+        timeout-minutes: 3
+        run: |
+          if [ ! -d TestResults.xcresult ]; then
+            echo "No result bundle; skipping coverage report."
+            exit 0
+          fi
+          # --report prints per-target and per-file percentages. Capture first,
+          # then branch on the real exit status: inside a pipeline the status
+          # would come from `tee`, which masks an xccov failure entirely.
+          if xcrun xccov view --report TestResults.xcresult > coverage.txt 2>&1; then
+            echo "### Coverage" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Coverage (xccov failed — reporting only, build unaffected)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat coverage.txt | tee -a "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          true
 
       - name: Upload test results
         if: ${{ failure() }}
