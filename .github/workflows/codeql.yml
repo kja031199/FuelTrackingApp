@@ -47,7 +47,10 @@ jobs:
   analyze:
     name: Analyze (swift)
     runs-on: macos-latest
-    timeout-minutes: 30
+    # Generous, because a traced build is genuinely slow (see the Build step).
+    # This bounds a hang; it is not a target. Runs are free on a public repo and
+    # this job blocks nothing — it is not a required check.
+    timeout-minutes: 50
 
     # Least privilege, as everywhere else here — but this workflow genuinely
     # needs more than `contents: read`: uploading results to the Security tab
@@ -76,22 +79,43 @@ jobs:
       # An explicit build rather than `autobuild`. Autobuild guesses at the
       # scheme, and this project has an embedded watchOS target plus a test
       # target — a wrong guess would analyse the wrong thing and report a
-      # confident, meaningless result. Mirroring ci.yml's invocation keeps the
-      # analysed build and the tested build in step.
+      # confident, meaningless result.
       #
-      # `build-for-testing` is deliberate: it compiles the app *and* the test
-      # target without running anything, so CodeQL sees all the source ci.yml
-      # exercises. No simulator is booted and no test executes here.
+      # ## Why this is slower than ci.yml, and what the flags are defending
+      #
+      # CodeQL builds its database by *tracing an actual compile*: it injects
+      # `libtrace.dylib` via `DYLD_INSERT_LIBRARIES` and observes every process
+      # the build spawns. That makes each spawn dramatically more expensive. On
+      # the first run here, `swiftc --version` alone took **110 seconds** (it is
+      # normally under a second), and the explicit-module build spawns one
+      # `SwiftExplicitDependencyGeneratePcm` per module per architecture —
+      # roughly a hundred of them. The run hit a 20-minute timeout having only
+      # finished the *watch* target.
+      #
+      #   - `ARCHS=arm64` is the big one. `ONLY_ACTIVE_ARCH=YES` does nothing
+      #     against a **generic** destination — there is no "active" arch to
+      #     resolve, so xcodebuild builds the full fat set and everything above
+      #     happens twice. `ci.yml` avoids this by accident, because it targets a
+      #     concrete `id=<udid>`. Naming the arch outright halves the work and
+      #     does not depend on a booted simulator.
+      #   - `build`, not `build-for-testing`. That drops the `FuelTrackerTests`
+      #     target — a third of the Swift in the repo — from the traced compile.
+      #     Test code is not shipped, and CodeQL findings in fixtures are noise.
+      #
+      # If this still times out, the next lever is dropping the `push:` trigger
+      # so it only runs on PRs and the weekly schedule. Do that before reaching
+      # for autobuild.
       - name: Build
-        timeout-minutes: 20
+        timeout-minutes: 35
         run: |
           set -euo pipefail
-          xcodebuild build-for-testing \
+          xcodebuild build \
             -project FuelTracker.xcodeproj \
             -scheme FuelTracker \
             -destination 'generic/platform=iOS Simulator' \
             -skipMacroValidation \
-            ONLY_ACTIVE_ARCH=YES \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=NO \
             COMPILER_INDEX_STORE_ENABLE=NO
 
       - name: Perform CodeQL analysis
