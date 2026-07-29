@@ -38,6 +38,14 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege for the GITHUB_TOKEN: this job only ever reads the checkout.
+# Pinned explicitly rather than inherited from the repository default, which is
+# a setting that can be changed elsewhere without anyone touching this file.
+# It matters most on a public repo, where anyone can open a pull request and
+# have their code executed by this workflow. `checks.yml` pins the same.
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Build & test (iOS Simulator)
