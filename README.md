@@ -170,3 +170,12 @@ The project ships a **DocC catalog** (`FuelTracker/FuelTracker.docc`) with brows
 ## Contributing
 
 Before making changes, read [`CONTRIBUTING.md`](CONTRIBUTING.md) for the working conventions (the `FuelEntryDraft` write chokepoint, the CloudKit-shaped model rules, the empty-entitlements constraint, and the testing bar) and [`ARCHITECTURE.md`](ARCHITECTURE.md) for how the targets and layers fit together. [`CLAUDE.md`](CLAUDE.md) is the same guidance as a terse operating manual — written for AI assistants, handy for anyone getting oriented fast.
+
+## License
+
+Licensed under the **Apache License, Version 2.0** — see [`LICENSE`](LICENSE). You may use, modify, and redistribute this source, including commercially.
+
+Two things to know, both spelled out in [`NOTICE`](NOTICE):
+
+- **The name and branding aren't part of the grant.** Apache-2.0 §6 excludes trademarks, and that exclusion is deliberate here. Fork the code freely; ship it under a different name.
+- **Most of this repository was written by Claude, an AI assistant**, under the direction and review of the copyright holder — recorded in the `Co-Authored-By` trailers on individual commits. This is disclosed for transparency, and because human-authorship requirements in some jurisdictions may affect which portions are eligible for copyright protection at all.
