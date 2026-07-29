@@ -138,7 +138,7 @@ in [`docs/accessibility.md`](docs/accessibility.md).
   `python3 scripts/check_memberwise_order.py`. Swift's memberwise initializer
   takes arguments in declaration order, so a property added at the end of a
   struct but passed in the middle of a call won't compile — and finding that out
-  from a macOS CI run costs 10x-billed minutes for a one-line fix.
+  from a macOS CI run costs a ~7-minute round trip for a one-line fix.
 - **Tests stay off real device services.** Anything hardware-backed goes behind
   a protocol and is stubbed. Concretely, the render harness injects
   `StubAuthenticator`, never `BiometricAuthenticator` — `AppLock.init` and
@@ -151,32 +151,43 @@ in [`docs/accessibility.md`](docs/accessibility.md).
   `-default-test-execution-time-allowance` do nothing here** — they bound XCTest
   cases, and this suite is Swift Testing. Bound an individual test with a
   `.timeLimit` trait; CI's step timeouts bound the job.
-- **CI runs on a 10x-billed macOS runner.** A push to a branch with a run in
-  flight cancels it and restarts from zero, so batch changes into one push
-  instead of trickling commits onto an open PR. A healthy run is a ~60-second
-  build plus a few seconds of tests; a 20-minute run means something hung.
+- **Batch your pushes.** A push to a branch with a run in flight cancels it and
+  restarts from zero, so batch changes into one push instead of trickling commits
+  onto an open PR. A healthy run is ~6.5 minutes end to end, of which the test
+  suite is about 24 seconds; a 20-minute run means something hung, not that the
+  build is slow.
 
 See the "Running the tests" section of the [README](README.md) for the full
 layout of the suite.
 
 ## Automated checks
 
-Two workflows run on every pull request, split by what they cost.
+The repository is **public**, so GitHub-hosted standard runners — macOS included
+— are free. Workflows are split by *speed and determinism* now, not by cost.
 
 **`ci.yml` — build & test.** A macOS runner builds the app and runs the suite on
-an iOS Simulator (see Testing above). This is the expensive one: **10× billing**,
-~7 minutes a run. It skips docs-only changes.
+an iOS Simulator (see Testing above), ~6.5 minutes a run. It skips docs-only
+changes, and because a skipped run reports no status, it isn't safe as a
+*required* check while that's true.
 
-**`checks.yml` — three cheap Linux checks**, all at **1× billing**, running in
-parallel and independent of each other. Unlike `ci.yml` these never skip, so they
-always report a status — which means they're the ones safe to make *required*
-status checks.
+**`checks.yml` — three fast Linux checks**, running in parallel and independent
+of each other. These never skip, so they always report a status — which makes
+them the ones safe to require.
 
 | Check | Tool | What fails it |
 |---|---|---|
 | Secret scan | gitleaks | A credential-shaped string anywhere in **any commit** |
 | Lint | SwiftLint | Any violation of the rules in `.swiftlint.yml` (`--strict`) |
 | Docs links | lychee | A broken relative link or `#heading-anchor` in Markdown |
+
+**`links-external.yml` — external links, weekly.** Runs lychee *without*
+`--offline` against the real network every Monday, plus on demand via
+`workflow_dispatch`. It is deliberately **not** on pull requests and **not** a
+required check: a failure means a link in the docs needs updating, never that
+your change is broken. Keeping it off the merge path is the point — a third
+party's server being down should not stand between a correct change and `main`.
+This only became useful once the repo went public; while it was private, every
+link to its own issues 404'd for an unauthenticated checker.
 
 ### Running them locally
 
@@ -191,8 +202,11 @@ docker run --rm -v "$PWD:/work" -w /work ghcr.io/realm/swiftlint:0.65.0 \
 # Secret scan (brew install gitleaks)
 gitleaks git . --config .gitleaks.toml --redact --verbose
 
-# Docs links (brew install lychee)
+# Docs links, the PR gate (brew install lychee)
 lychee --offline --include-fragments '**/*.md'
+
+# Docs links including external URLs — what the weekly job runs
+lychee --include-fragments --max-retries 3 --timeout 20 '**/*.md'
 ```
 
 ### What to know before changing them
@@ -206,10 +220,13 @@ lychee --offline --include-fragments '**/*.md'
   `force_unwrapping` (59 hits, 56 of them in tests), `line_length` (58 lines over
   120, nearly all UI copy), `file_length` (the four longest files are test files
   that are *supposed* to grow). Read that before re-litigating one of them.
-- **The link check is `--offline` on purpose.** It validates relative links and
-  anchors only. External URLs are skipped because this repo is private and its
-  own docs link to its own issues — an unauthenticated checker 404s on every one
-  — and because a third-party site being down shouldn't block a merge.
+- **The PR link check is `--offline` on purpose.** It validates relative links
+  and anchors only. Originally that was for two reasons: the repo was private, so
+  an unauthenticated checker 404'd on its own issue links, *and* a third-party
+  site being down shouldn't block a merge. Going public retired the first reason;
+  **the second still stands**, which is why the merge gate stayed offline and
+  external checking moved to the weekly `links-external.yml` instead of simply
+  dropping the flag.
 - **The secret scan reads full history** (`fetch-depth: 0`), not the diff. A
   secret committed and then deleted in a later commit is still leaked. If one
   ever lands, allowlisting is not the fix: rotate the credential first, then

@@ -1,0 +1,69 @@
+name: External links
+
+# Checks the **external** URLs in the docs — Apple documentation pages and this
+# repo's own issue links — on a schedule rather than on every pull request.
+#
+# Why this is separate from the `links` job in `checks.yml`:
+#
+#   - That job runs `--offline`, so it only validates on-disk targets (relative
+#     file links and heading anchors). It is fast, fully deterministic, and can
+#     never fail because someone else's server had a bad day — which is exactly
+#     what you want gating a merge.
+#   - External URLs rot too, just on a different timescale. Checking them weekly
+#     catches a moved Apple docs page without ever standing between a correct
+#     change and `main`.
+#
+# So: a failure here means "a link in the docs needs updating", never "your PR
+# is broken". Deliberately NOT a required status check.
+#
+# This became possible only when the repo went public. While it was private,
+# every link to its own issues 404'd for an unauthenticated checker, so there
+# was nothing an external pass could usefully assert.
+
+on:
+  schedule:
+    # Mondays at 06:00 UTC.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  external:
+    name: External links (lychee)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      LYCHEE_VERSION: v0.15.1
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Install lychee
+        run: |
+          set -euo pipefail
+          curl -sSfL \
+            "https://github.com/lycheeverse/lychee/releases/download/${LYCHEE_VERSION}/lychee-${LYCHEE_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
+            | tar -xz lychee
+          chmod +x lychee
+          ./lychee --version
+
+      - name: Check every link, including external
+        env:
+          # Most external links here point at this repository's own issues.
+          # lychee uses this to talk to the GitHub API instead of scraping HTML,
+          # which avoids unauthenticated rate limiting on a shared runner IP.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # No --offline: this is the pass that actually reaches the network.
+          # Retries and a real timeout absorb transient failures, so a blip
+          # doesn't page anyone over a link that is in fact fine.
+          ./lychee \
+            --no-progress \
+            --include-fragments \
+            --max-retries 3 \
+            --timeout 20 \
+            --accept '200,206,429' \
+            '**/*.md'

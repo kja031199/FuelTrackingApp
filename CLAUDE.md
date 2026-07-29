@@ -65,8 +65,8 @@ Consequences:
   Swift's memberwise `init` takes arguments in **declaration order**, so adding a
   property at the end of a struct and passing it mid-call fails to compile:
   `Incorrect argument labels in call (have 'points:metric:accessibilityTitle:…',
-  expected '…:downsampleThreshold:accessibilityTitle:')`. This shipped to CI
-  once, at 10x billing, for a one-line reordering.
+  expected '…:downsampleThreshold:accessibilityTitle:')`. This burned a full CI
+  round trip once for a one-line reordering.
   `scripts/check_memberwise_order.py` catches it here — it reproduced that exact
   error string offline:
   ```bash
@@ -77,20 +77,33 @@ Consequences:
   gate: a heuristic shouldn't block a merge, and CI has a real compiler. Treat a
   failure as real and a pass as encouraging, not conclusive.
 
-### What CI actually costs, and how not to waste it
+### What CI costs, and how not to waste it
 
-`.github/workflows/ci.yml` runs on a **macOS** runner, which bills at a **10x
-multiplier** against a private repo's monthly Actions allowance — roughly **200
-macOS minutes/month**. Treat every run as expensive:
+**The repo is public, so GitHub-hosted standard runners are free — including
+macOS.** There is no monthly minute allowance to protect and no 10x multiplier
+to fear. That was the binding constraint for most of this project's life (a
+private repo bills macOS at 10x against ~200 macOS-minutes/month, and 19 runs
+once consumed 80% of a month in five days); going public in #76 removed it
+rather than optimizing it. Historical notes elsewhere that treat a run as
+expensive are describing the old regime.
+
+Runs are still not free of *your* time, and a wasted run is still a wasted
+7 minutes of feedback:
 
 - **Batch your pushes.** `concurrency: cancel-in-progress: true` means a second
-  push to the same branch cancels the in-flight run and starts over, throwing
-  away everything it had already billed. Push once, then wait. Do **not** push a
-  "small extra fix" while a run is in flight.
-- **Measured shape of a healthy run:** build ≈ **60 seconds**, suite runs in
-  seconds. If a run takes 20+ minutes, it is *hung*, not slow — read the
-  timestamps in the log before tuning compiler flags. (An earlier round of
-  tuning chased a "20-minute build" that a timestamped log disproved.)
+  push to the same branch cancels the in-flight run and starts over. This is now
+  about latency rather than money, but the advice is unchanged: push once, then
+  wait, rather than trickling a "small extra fix" onto a run already going.
+- **Measured shape of a healthy run** (run #18, timestamped): whole job ≈ **6.5
+  min** — build-and-test step **230s**, simulator pick/boot **103s**, toolchain
+  dump 29s. The suite itself self-reports **~24 seconds**, i.e. about 6% of the
+  run. Note the build-and-test *step* is far longer than the ~60s that
+  `-showBuildTimingSummary` reports as compile time; that gap is xcodebuild
+  overhead, not the tests.
+- If a run takes 20+ minutes, it is *hung*, not slow — read the timestamps in
+  the log before tuning compiler flags. (An earlier round of tuning chased a
+  "20-minute build" that a timestamped log disproved; the real cause was an
+  `LAContext` call in the render harness.)
 - The job is capped at 20 minutes with tighter per-step timeouts, so a hang
   fails fast and names the step it died in.
 - Tests run **serially** (`-parallel-testing-enabled NO`): the suite is short and
@@ -101,8 +114,8 @@ macOS minutes/month**. Treat every run as expensive:
 
 ### The cheap Linux checks — `.github/workflows/checks.yml`
 
-Three jobs on `ubuntu-latest` at **1x** billing, parallel and independent:
-**gitleaks** (secret scan), **SwiftLint** (lint), **lychee** (Markdown links).
+Three jobs on `ubuntu-latest`, parallel and independent: **gitleaks** (secret
+scan), **SwiftLint** (lint), **lychee** (Markdown links).
 Deliberately no `paths-ignore` — they're cheap, and a docs change is exactly when
 the link check matters. They always report a status, so unlike `ci.yml` these are
 the ones that can be *required* checks.
