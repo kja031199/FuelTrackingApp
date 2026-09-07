@@ -55,6 +55,17 @@ re-opens a closed security issue.
    are pure text→value logic and therefore live in `Shared/`; the *importers*
    that produce that text from a photo are iOS-only.
 
+   **`Models/`, `Statistics/`, and `Scanning/` additionally import no SwiftUI.**
+   That is stronger than the watch-target rule above and holds on purpose: it is
+   what lets the domain layer be reasoned about — and ported — without a UI
+   framework in scope. Two types used to breach it by accident and were moved:
+   `DateValuePoint` was declared in `Views/MetricCharts.swift` (which imports
+   SwiftUI *and* Charts) while `FuelStatistics` and `VehicleShowdown` both
+   produced it, and `Metric` carried a `color(in:)` that dragged SwiftUI into
+   `KPI`. `Metric` now keeps only its hue and spoken name; the `Color`
+   resolution lives in `Metric+Color.swift`. Keep new domain types on the same
+   side of that line.
+
 2. **The model schema stays CloudKit-shaped.** Every `@Model` attribute has a
    default value, every relationship is optional, and there are no unique
    constraints. SwiftData syncs the schema through the user's private CloudKit
@@ -90,6 +101,7 @@ re-opens a closed security issue.
 ```
 Shared/
 ├── Models/          SwiftData models + FuelEntryDraft (the write chokepoint)
+│                    + DateValuePoint (chart-series sample, a plain value type)
 ├── Statistics/      KPI & chart math, showdown, weekday patterns
 ├── Scanning/        Pure OCR-text → value parsers (pump, odometer, receipt)
 ├── Support/         Shared form model, formatters, metric colors, container

@@ -1,9 +1,16 @@
-import SwiftUI
+import Foundation
 
-/// The app's dashboard metrics and their fixed colors.
+/// The app's dashboard metrics and their fixed hues.
 ///
 /// Color follows the metric everywhere — KPI tiles and charts, iPhone and
 /// watch — so a reader can connect "blue" to fuel economy across screens.
+///
+/// This file is deliberately **Foundation-only**. Resolving a hue to an actual
+/// `Color` needs SwiftUI, so it lives in `Metric+Color.swift`; keeping the two
+/// apart means `KPI` — which carries a `Metric` — stays a pure value type, and
+/// the whole statistics layer can be reasoned about (and ported) without a UI
+/// framework in scope. `AccentHue` itself is a plain string enum, though it is
+/// declared next to the palette that consumes it in `AccessiblePalette.swift`.
 enum Metric {
     case economy
     case price
@@ -21,15 +28,6 @@ enum Metric {
         case .spending: .purple
         case .distance: .teal
         }
-    }
-
-    /// A contrast-safe color for this metric.
-    ///
-    /// Takes the scheme explicitly rather than reading the environment itself,
-    /// so it can be called from inside `Chart` builders and from tests. Callers
-    /// hold `@Environment(\.colorScheme)` and pass it down.
-    func color(in scheme: ColorScheme) -> Color {
-        AccessiblePalette.color(hue, in: scheme)
     }
 
     /// Name VoiceOver falls back to when a chart isn't given a specific title.

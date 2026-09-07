@@ -107,7 +107,10 @@ The sync code is always present; it activates automatically when the entitlement
 
 ```
 Shared/                           # Compiled into both apps — single source of truth
-├── Models/                       # SwiftData models (Vehicle, FuelEntry, FuelGrade)
+├── Models/                       # SwiftData models (Vehicle, FuelEntry, FuelGrade),
+│                                 #   FuelEntryDraft (the write chokepoint),
+│                                 #   DateValuePoint (chart series sample — a value
+│                                 #   type the statistics layer produces)
 ├── Statistics/
 │   ├── FuelStatistics.swift      # All KPI & chart math (MPG segments, monthly rollups)
 │   ├── VehicleShowdown.swift     # Head-to-head two-vehicle comparison model
@@ -120,7 +123,8 @@ Shared/                           # Compiled into both apps — single source of
     ├── PumpScanParser.swift         # OCR text → gallons/price/total (labels + arithmetic)
     ├── ReceiptScanParser.swift      # Receipt OCR → fuel numbers + printed date + station brand
     ├── OdometerScanParser.swift     # OCR text → odometer, validated against history
-    ├── Metric.swift                 # Fixed metric→color mapping
+    ├── Metric.swift                 # Fixed metric→hue mapping (Foundation-only)
+    ├── Metric+Color.swift           # Hue→Color resolution (the SwiftUI half)
     └── Formatters.swift             # Number/currency formatting
 FuelTracker/                      # iPhone app (thin view layer)
 ├── FuelTrackerApp.swift
