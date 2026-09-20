@@ -9,6 +9,12 @@
 # class of maintenance this automates. That one was noticed by reading a warning
 # in a CI log; the next one shouldn't have to be.
 
+# Kept running after the repo was frozen, deliberately. The README claims the
+# suite "still runs on every push", and that stays true only while the pinned
+# actions keep working — a deprecated runtime would silently redden CI on a repo
+# nobody is watching. Monthly is the slowest cadence Dependabot offers; these
+# PRs are few, and they are still worth merging.
+
 version: 2
 
 updates:

@@ -1,7 +1,31 @@
 # FuelTracker Roadmap
 
-Where the app is, and where it's going. This is a living plan — reorder freely;
-each concrete item links to a tracking issue.
+> ## 🧊 Closed — this roadmap is a record, not a plan
+>
+> Development moved to
+> **[fueltracker-web](https://github.com/kja031199/fueltracker-web)** in
+> September 2026. Nothing below Phase 1 will be built *here*; several items were
+> built *there* instead, and the rest were closed as no longer worth doing on a
+> frozen iOS app.
+>
+> The reason is in Phase 3 below, unchanged: every remaining item was gated on a
+> paid Apple Developer account. Rewriting for the browser removed the gate
+> rather than paying it.
+>
+> | Was | Became |
+> |---|---|
+> | Phase 2 — **export (#64)** | Shipped on the web: CSV **and** JSON, with an export→wipe→restore round trip verified in a real browser. No PDF |
+> | Phase 2 — reminders, EV, maintenance, tagging (**#65–#68**) | Still unbuilt. Carried over to the web repo's issues; closed here |
+> | Phase 3 — **"Ship it"** entirely | Dissolved. Publishing a web app is a URL |
+> | Phase 3 — **iCloud sync** | Deliberately *not* rebuilt. The web app is local-first: no account, no server, nothing uploaded |
+> | Phase 3 — **#24 shareable link** | Unblocked but unbuilt. On the web a URL *is* the transport, and the submit→review→approve data layer is already ported |
+> | Phase 4 — **#42 widget / App Intents** | Closed. The web app is an installable PWA, which is the equivalent affordance |
+>
+> What the rewrite did **not** reproduce is listed in the README above:
+> live pump scanning, the watch app, encryption at rest, and the Face ID lock.
+> Those remain reasons to build this version.
+
+Where the app was, and where it was going. Kept as written, for the record.
 
 ## Where we are
 

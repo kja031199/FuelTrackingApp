@@ -4,6 +4,32 @@
 
 A native iPhone app for tracking gas fill-ups and fuel economy, inspired by Fuelly. Built with SwiftUI, SwiftData, and Swift Charts — no third-party dependencies.
 
+> ## 🧊 This app is finished, not abandoned
+>
+> Development has moved to **[fueltracker-web](https://github.com/kja031199/fueltracker-web)**, a
+> browser rewrite of the same app. This repository is frozen: it still builds, its 425 tests still
+> run on every push, and it remains the reference implementation the rewrite was ported against —
+> but no new features will land here.
+>
+> **Why.** Everything left on this repo's roadmap was gated on a paid Apple Developer account
+> (~$99/yr): App Store distribution, iCloud sync, the shareable-link feature, the home-screen
+> widget. A web app dissolves that entirely — publishing becomes a URL, and it runs on Android and
+> desktop too, which an iPhone-only app never could.
+>
+> **What this version still does better.** The rewrite is not a superset, and it is worth being
+> plain about that:
+>
+> | | Here | On the web |
+> |---|---|---|
+> | Pump scanning | Live camera OCR at video frame rate, reads seven-segment displays | Not offered — browser OCR cannot read segment digits at all |
+> | Apple Watch | Full companion app | No equivalent |
+> | Data at rest | Per-file encryption keyed to the device passcode | Browser storage, unencrypted |
+> | App lock | Face ID / passcode | Not implemented |
+> | Receipt photos | Snap or import, with live scanning | Import only |
+>
+> If you want any of those, this is the version to build. The web app wins on reach, on being
+> installable without an app store, and on having export that actually works.
+
 ## Features
 
 ### Scan the pump with your camera
