@@ -19,8 +19,10 @@ user's private iCloud.
 
 - `Shared/` — compiled into **both** apps. Models, statistics, parsers, form
   logic, formatters. No UIKit/Vision/ImageIO/MapKit here.
-- `Shared/Models/` — `Vehicle`, `FuelEntry`, `FuelGrade`, `PendingFillUp`, and
-  **`FuelEntryDraft`** (the single write chokepoint).
+- `Shared/Models/` — `Vehicle`, `FuelEntry`, `FuelGrade`, `PendingFillUp`,
+  **`FuelEntryDraft`** (the single write chokepoint), and `DateValuePoint`
+  (the chart-series sample type, kept here rather than beside the charts so
+  `Statistics/` depends on nothing above `Models/`).
 - `Shared/Statistics/` — `FuelStatistics` (MPG/cost math), `VehicleShowdown`,
   `WeekdayPricePattern`, `KPI`.
 - `Shared/Scanning/` — pure OCR-text→value parsers (pump, odometer, receipt).
